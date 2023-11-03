@@ -1,0 +1,8 @@
+unclassified:
+  slackNotifier:
+    baseUrl: 'https://myorg.slack.com/services/hooks/jenkins-ci/'
+    botUser: false
+    sendAs: 'Jenkins'
+    sendAsText: false
+    teamDomain: 'myorg'
+    tokenCredentialId: 'slack-credentials'

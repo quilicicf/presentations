@@ -1,0 +1,9 @@
+// Enable DSL support in IDEA, see https://confluence.jetbrains.com/display/GRVY/Scripting+IDE+for+DSL+awareness
+// Points Groovy completion to the class DslFactory from the job DSL jar which is downloaded as a dependency in build.gradle.
+
+final String jobPath = /.*\/jobs\/.*\.groovy/
+
+final def ctx = context(pathRegexp: jobPath)
+contributor(ctx, {
+  delegatesTo(findClass('javaposse.jobdsl.dsl.DslFactory'))
+})

@@ -1,0 +1,12 @@
+kind: 'PersistentVolumeClaim'
+apiVersion: 'v1'
+metadata:
+  name: 'pvc-asdf'
+  namespace: 'jenkins-myteam'
+spec:
+  accessModes:
+    - 'ReadWriteMany'
+  resources:
+    requests:
+      storage: '10Gi'
+  storageClassName: 'aws-efs'

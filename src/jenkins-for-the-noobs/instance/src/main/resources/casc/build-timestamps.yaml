@@ -1,0 +1,18 @@
+unclassified:
+  buildTimestamp:
+    enableBuildTimestamp: true
+    timezone: 'Etc/GMT'
+    pattern: 'YYYYMMddHHmmss'
+    extraProperties:
+      - key: 'BUILD_TIMESTAMP_ISO'
+        value: "yyyy-MM-dd'T'HH:mm:ss.SSSz"
+        shiftExpression: "- 0 days 0 hours 0 minutes"
+      - key: 'BUILD_TIMESTAMP_SIMPLE'
+        value: 'yyyy-MM-dd HH:mm:ss'
+        shiftExpression: "- 0 days 0 hours 0 minutes"
+      - key: 'BUILD_DATE_SIMPLE'
+        value: 'yyyy-MM-dd'
+        shiftExpression: "- 0 days 0 hours 0 minutes"
+      - key: 'BUILD_TIME_SIMPLE'
+        value: 'HH:mm:ss'
+        shiftExpression: "- 0 days 0 hours 0 minutes"

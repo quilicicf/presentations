@@ -1,0 +1,14 @@
+unclassified:
+  globallibraries:
+    libraries:
+      - name: 'myteam'
+        defaultVersion: 'master'
+        implicit: false
+        includeInChangesets: true
+        allowVersionOverride: true
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: 'https://github.com/MyOrg/my-repo.git'
+                credentialsId: 'github-credentials'

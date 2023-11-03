@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    volume.beta.kubernetes.io/storage-provisioner: kubernetes.io/aws-ebs
+    volume.kubernetes.io/storage-resizer: kubernetes.io/aws-ebs
+  labels:
+    app.kubernetes.io/component: jenkins-master
+    app.kubernetes.io/instance: jenkins-myteam
+    app.kubernetes.io/name: jenkins
+  name: jenkins-myteam
+  namespace: ci
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard
+  volumeMode: Filesystem

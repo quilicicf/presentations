@@ -1,0 +1,7 @@
+unclassified:
+  sonarGlobalConfiguration:
+    buildWrapperEnabled: true
+    installations:
+      - name: 'sonar'
+        serverUrl: 'https://sonar.myorg.com'
+        credentialsId: 'sonar-token'

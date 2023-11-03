@@ -1,0 +1,20 @@
+apiVersion: 'v1'
+kind: 'ConfigMap'
+metadata:
+  name: 'configmap-myteam-docker-daemon'
+  namespace: 'jenkins-myteam'
+  annotations:
+    fluxcd.io/automated: 'true'
+data:
+  docker-config.json: |-
+    {
+      "builder": {
+        "gc": {
+          "enabled": true,
+          "defaultKeepStorage": "10GB",
+          "policy": [
+            { "keepStorage": "10GB", "all": true }
+          ]
+        }
+      }
+    }

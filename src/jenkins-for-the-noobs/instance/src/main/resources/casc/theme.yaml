@@ -1,0 +1,7 @@
+appearance:
+  simpleTheme:
+    elements:
+      - cssUrl:
+          url: 'https://jenkins-myteam.com/userContent/custom-style/index.css'
+      - jsUrl:
+          url: 'https://jenkins-myteam.com/userContent/custom-style/index.js'

@@ -1,0 +1,1182 @@
+:imagesdir: assets
+:a2r-js: assets/deck.js
+:a2r-css: assets/deck.css
+:a2r-page-title: Jenkins for the noobs
+:a2r-favicon: assets/favicon.webp
+:a2r-fragment-lists: true
+:a2r-fragment-tables: true
+:a2r-theme-name: light-and-dark-auto
+:a2r-svg-icons-dir: assets/svg-icons
+
+= image:jenkins-ninja.webp[Jenkins ninja] Jenkins for the noobs
+
+[.subtitle]#Acquire full autonomy on Casc-via-Flux Jenkins instances#
+
+[.notes]
+====
+*Intended audience:* newbies-to-intermediate Jenkins users
+
+*Targeted goal:* full autonomy to use Jenkins, near-full autonomy to administrate it (some scarce parts need operating team's intervention for security reasons).
+
+*How to run that presentation:* run the link:./instance/src/test/groovy/TestInstance.groovy[`TestInstance`] class with link:../../.idea/runConfigurations/TEST_INSTANCE.xml[the associated run configuration] so that dynamic links in the presentation work
+
+// TODO: Write full documentation for test instance run
+// TODO: either use CASC_VAULT_FILE in the run configuration to avoid putting credentials in the run config or change the README for Vault to use static credentials if possible
+====
+
+== Disclaimer
+
+* I am self-taught
+* This should still be a strong getting started guide
+
+[.notes]
+====
+No *formal training* in Jenkins everything I learned was from *experience and research*
+
+There might be *approximations* but *everything's been tested* before making it in this presentation
+====
+
+=== Reminder about CI
+
+* Purpose: integrate devs in main branch
+* Acceptance criteria: fast & reliable
+* How to detect bad CI: toil & doubts
+
+[.notes]
+====
+CI is supposed to *automate one's confidence in the code* they push to production.
+
+*If you don't trust your CI, it's working against its purpose!*
+====
+
+== Quick overview
+
+=== What is Jenkins
+
+* Continuous integration server
+* link:https://github.com/jenkinsci[Open-source]
+* Developed in Java
+* Self-hosted
+* Built on plugins, lots and lots of plugins
+* Built on the controller-agent model
+
+[.notes]
+====
+* Open-source means *you can contribute* even more so because it's written in Java
+* The keyword is *plugins*!
+* Self-hosting means *administering everything*, we're working under the assumption that the instance is self-hosted on a link:https://kubernetes.io/[Kubernetes] cluster via link:https://fluxcd.io[Flux] and works along with:
+** a link:https://www.vaultproject.io[Vault instance] for credentials storage
+** a link:https://github.com/settings/applications[GitHub OAuth app] for authentication to the controller
+* Each feature (even core) is implemented in a plugin, they *interact with each other*
+* The controller instance orchestrates what the agent instances do. They execute the jobs, but the controller tells them when and how.
+====
+
+[.auto-fragments-first]
+=== Installation with K8s & Flux
+
+[.layout-columns]
+====
+[.column-4x.small]
+=====
+* Instances hosted in a K8s cluster
+* Installed using link:https://github.com/jenkinsci/helm-charts[Jenkins' helm-chart]
+* Configured in `gitops-repo`
+* Deployment by Flux
+* Config-reload transforms config maps in files
+* emoji:warning[] CasC only *seems* immutable!️
+* emoji:warning[]️ UI changes get overwritten by the CasC
+=====
+
+[.column-8x]
+=====
+
+[graph,architecture,role="fragment fade-in"]
+----
+flowchart TB
+    subgraph gh[<svg height='40' width='200' data-icon-label='github'>GitHub</svg>]
+
+        hidden4
+        gitops(<svg height='45' width='180' data-icon-label='git'>gitops-repo</svg>)
+        product(<svg height='45' width='180' data-icon-label='git'>product-repo</svg>)
+    end
+
+    subgraph cluster[<svg height='60' width='450' data-icon-label='k8s'>Kubernetes cluster</svg>]
+
+        hidden
+        flux[<svg height='45' width='175' data-icon-label='flux'>Flux operator</svg>]
+
+        subgraph namespace[<svg height='60' width='500' data-icon-label='jenkins'>Jenkins instance namespace</svg>]
+            hidden2
+            agent[<svg height='45' width='120' data-icon-label='pod'>Agent</svg>]
+            pvc[<svg height='45' width='140' data-icon-label='volume'>Volume</svg>]
+            configMaps[<svg height='45' width='180' data-icon-label='cm'>Config maps</svg>]
+
+            subgraph controller[<svg height='60' width='400' data-icon-label='pod'>Jenkins controller</svg>]
+                hidden3
+                jenkins[
+                <svg height='45' width='120' data-icon-label='docker'>jenkins</svg>]
+                configReload[<svg height='45' width='160' data-icon-label='docker'>config-reload</svg>]
+            end
+        end
+    end
+
+    gitops --> flux
+    flux --> configMaps
+    configReload --> configMaps
+    configReload --> pvc
+    configReload --> jenkins
+    jenkins --> pvc
+    linkStyle 0,1,2,3,4,5 stroke: #bf7829 ;
+
+    product --> jenkins
+    jenkins --> agent
+    linkStyle 6,7 stroke: #328b31 ;
+
+%% Hidden nodes used to tweak graph looks
+    hidden ~~~ hidden2
+    hidden2 ~~~ hidden3
+    hidden3 ~~~ configReload
+    hidden4 ~~~ gitops
+    hidden4 ~~~ product
+----
+
+[graph-animation,architecture]
+----
+[
+  { selector: '#L-gitops-flux-0', attributes: { 'data-fragment-index': 100 } },
+  { selector: '#L-flux-configMaps-0', attributes: { 'data-fragment-index': 101 } },
+  { selector: '#L-configReload-configMaps-0', attributes: { 'data-fragment-index': 102 } },
+  { selector: '#L-configReload-pvc-0', attributes: { 'data-fragment-index': 103 } },
+  { selector: '#L-configReload-jenkins-0', attributes: { 'data-fragment-index': 104 } },
+  { selector: '#L-jenkins-pvc-0', attributes: { 'data-fragment-index': 105 } },
+
+  { selector: '#L-product-jenkins-0', attributes: { 'data-fragment-index': 110 } },
+  { selector: '#L-jenkins-agent-0', attributes: { 'data-fragment-index': 111 } },
+]
+----
+
+=====
+====
+
+[.notes]
+====
+Most probably a dedicated *CI* cluster
+
+The Jenkins helm chart is developed by the Jenkins community
+
+The CI cluster is defined as-code using link:https://about.gitlab.com/topics/gitops[GitOps]
+
+Flux reads what's in the configuration (in the git repository) and applies it in the cluster (polling)
+
+When config maps change, the `config-reload` container (link:https://github.com/kiwigrid/k8s-sidecar[kiwigrid/k8s-sidecar] Docker image) updates the config files in the shared volume
+
+Beware of remaining state! The configuration-as-code cannot delete anything. You'll have to remove jobs/plugins/config files manually!
+
+You can *explore in the UI*, but you need to *replicate* the changes in the *CasC*
+====
+
+=== How to configure Jenkins
+
+* Global configuration
+* Jobs configuration
+* Pipelines configuration
+
+[.notes]
+====
+*Global configuration:* where the general behavior of Jenkins is set
+
+*Jobs configuration:* where the organization/configuration of the jobs is done
+
+*Pipelines configuration:* where the business logic of jobs is done
+
+*Each plugin can contribute to any of those!* You can't know what options are available unless you know which plugins are installed!
+====
+
+== The global configuration
+
+image::global_configuration_screen.avif[Global configuration screen,1500,940]
+
+[.notes]
+====
+Accessible from menu `Manage Jenkins`
+
+The menu can be updated by plugins (Ex: XML Job To DSL)
+
+The page can be updated by plugins (Ex: CasC)
+
+Most of the configuration page comes from the core (Ex: credentials)
+====
+
+=== Configuration-as-code (CasC)
+
+[.subtitle]#A tool to set global configuration as code#
+
+* Applied by the link:https://plugins.jenkins.io/configuration-as-code[CasC plugin]
+* Written in YAML
+* icon:git[] Config in `gitops-repo`
+* Plugins contribute to it so link:http://localhost:8201/jenkins/configuration-as-code/reference[the doc is dynamic]
+// real link ☝?
+* link:#casc-validation[Validation available]
+[.subtitle]#opt-in#
+* Check after deployment in link:http://localhost:8201/jenkins/log/all"[the logs]
+* CasC YAML icon:casc[], inside Helm config icon:helm[] or not
+
+[.notes]
+====
+Lines annotated with icon:git[] mean the configuration is in the link:https://www.gitops.tech[GitOps] repository
+
+CasC plugin used to be community plugin but was added in the core!
+
+link:http://localhost:8201/jenkins/manage/configuration-as-code/reference[The documentation] shows all the configuration and relates to *the plugins* that support the different sections
+
+If *it breaks*, the configuration is not loaded. This is *invisible until next re-start*, then boom! No start!
+
+Validation is done by basically trying to load the CasC in a test instance that replicates the target instance as much as possible
+
+The community is trying to add link:https://github.com/jenkinsci/configuration-as-code-plugin/blob/master/docs/features/jsonSchema.md[JSON schema-based validation], but it's not ready yet.
+
+Each instance hosts its logs, you need `Overall/SystemRead` permissions to see them.
+
+The configuration can be in CasC or Helm chart, JSON pointers tell where in a document.
+
+Lines annotated with icon:helm[] mark Helm configurations.
+
+Lines annotated with icon:casc[] mark CasC configuration.
+
+The link:https://github.com/jenkinsci/helm-charts/blob/main/charts/jenkins/README.md[Helm chart's documentation].
+====
+
+=== Plugins
+
+[.layout-columns]
+====
+[.column-4x.small]
+=====
+* icon:helm[] Config in [.small]`/spec/values/controller`
+* [.small]`installPlugins` base plugins
+* [.small]`additionalPlugins` other plugins
+* Plugins updated at restart
+* [.small]`overwritePlugin` handle conflicts
+* icon:recommended[] Document plugin purpose
+=====
+
+[.column-8x]
+=====
+
+[source,yaml,role="fragment small"]
+----
+initializeOnce: false # Never update plugins
+installLatestPlugins: true # Update plugin to their latest version (not LTS)
+installPlugins:
+    - configuration-as-code # Configure Jenkins as code https://plugins.jenkins.io/configuration-as-code
+    - git # Integration with git https://plugins.jenkins.io/git
+    - kubernetes # Run dynamic agents in a K8s cluster https://plugins.jenkins.io/kubernetes
+    - prometheus # Let Jenkins provide prometheus metrics https://plugins.jenkins.io/kubernetes
+    - workflow-aggregator # Add pipelines to Jenkins https://plugins.jenkins.io/workflow-aggregator
+additionalPlugins:
+    - ansicolor # Support ANSI escape codes for console output https://plugins.jenkins.io/ansicolor
+    - antisamy-markup-formatter # Safe HTML subset to format descriptions https://plugins.jenkins.io/antisamy-markup-formatter
+    - authorize-project # Run jobs as any user https://plugins.jenkins.io/authorize-project
+    - basic-branch-build-strategies # Add branch strategies to job configurations https://plugins.jenkins.io/basic-branch-build-strategies
+    - branch-api # Add configuration options to branch jobs https://plugins.jenkins.io/branch-api
+    - build-timestamp # Create build timestamps and expose them in the environment https://plugins.jenkins.io/build-timestamp
+    - cloudbees-disk-usage-simple # Add disk usage in administration page https://plugins.jenkins.io/cloudbees-disk-usage-simple
+
+# Use overwritePlugins to work around bugs deep in the dependency tree.
+# Example value: [ 'trilead-api:1.0.5' ] to overwrite the plugin trilead-api to version 1.0.5
+# De-activate with value: true
+overwritePlugins: true
+----
+=====
+====
+
+[.notes]
+====
+*Plugins* can be *installed* in the *Docker image* directly to be more rigid. This is a tradeoff to consider, it makes upgrades significantly harder but prevents auto-upgrades.
+
+In the case shown here, upgrades are only done *when the helm chart is updated*! This means that as long as you do not update it, you let your plugins age. You need to find a way to regularly check for upgrades, granting `Overall/Manage` rights to chosen users will display CVEs at least which is a start.
+
+*Plugin updates sometimes* (seldom) *break startup*, in which case, *conflicts* must be *fixed* by *overwriting versions*. *Check the logs* to understand the conflict!
+
+*Documenting* plugin *purpose* eases *maintenance*, namely, removing unused plugins
+
+Lines annotated with icon:recommended[] are personal recommendations
+====
+
+=== Permissions - part I
+
+[.subtitle]#How to assign roles & permissions#
+
+[.layout-columns]
+====
+[.column-4x.small]
+=====
+* icon:helm[] Configs nested in [.small]`/spec/values/controller/JCasC`
+* Authentication usually done by link:https://plugins.jenkins.io/github-oauth[github-oauth plugin]
+** icon:helm[] Config sub-path [.small]`/securityRealm`
+* Roles usually by link:https://plugins.jenkins.io/role-strategy[role-strategy plugin (RBAC)]
+** icon:helm[] Config sub-path [.small]`/authorizationStrategy`
+* Connected to a link:https://github.com/settings/applications[GitHub OAuth app]
+* Linked to GitHub organizations, teams, or accounts
+=====
+
+[.column-8x.small]
+=====
+[source,yaml,role="fragment fade-in"]
+----
+JCasC:
+  securityRealm:
+    github:
+      githubWebUri: 'https://github.com'
+      githubApiUri: 'https://api.github.com'
+      clientID: '${github-oauth-client-id-jenkins-myteam:-NotSet}'
+      clientSecret: '${github-oauth-secret-jenkins-myteam:-NotSet}'
+      oauthScopes: 'read:org,user:email'
+
+  authorizationStrategy:
+    roleBased:
+      roles:
+        global:
+          - name: 'administrators'
+            description: 'Jenkins Administrators'
+            permissions:
+              - 'Overall/Administer'
+            entries:
+              - group: 'MyOrg*ci-masters'
+              - user: 'service-user'
+----
+=====
+====
+
+[.notes]
+====
+The *authentication* is made via *GitHub OAuth apps*
+
+The *authorization strategy* is built upon the authentication using *role-based-access-control*
+💡 You can check which apps have access to info about your account in the GitHub settings page, you can also revoke access from there
+
+Get the identifier for GitHub teams from the URL fragments in the URL `https://github.com/orgs/$\{org}/teams/$\{team}`.
+
+Example: link:https://github.com/orgs/MyOrg/teams/my-team[] gives `MyOrg*my-team`.
+====
+
+=== Permissions - part II
+
+[.subtitle]#More details on Jenkins permissions#
+
+[.layout-columns]
+====
+[.column-3x.small]
+=====
+* [.small]`Overall/*` for global access
+* [.small]`Overall/Administer` become God
+* [.small]`Overall/SystemRead` view admin pages
+* [.small]`Overall/Manage` non-security-related administration
+* [.small]`Credentials/*` access rights on credentials
+* [.small]`Job/*` access rights on jobs
+* Permissions can be added in sub-parts of Jenkins
+* More information in link:https://www.jenkins.io/doc/book/security/access-control/permissions[the doc]
+=====
+
+[.column-9x.fragment]
+=====
+image::permissions.avif[Permissions,1200,700]
+=====
+====
+
+[.notes]
+====
+There are a lot of permissions, I only talked about a few by lack of time, please read link:https://www.jenkins.io/doc/book/security/access-control/permissions[the documentation] for more information.
+
+The `Global/*` and `Job/*` are the most important, the rest should not be used a lot anyway
+
+It is possible to *add permissions* on a *folder* for example. This is done with `__TESTS__`to allow fast iterations without too much interaction with Vault.
+====
+
+=== Integration with Vault
+
+[.layout-columns]
+====
+[.column-4x.small]
+=====
+* Store secrets in a VaaS instance
+* icon:helm[] Config [.small]`/spec/values/containerEnv`
+* [.small]`CASC_VAULT_URL` location of VaaS
+* [.small]`CASC_VAULT_PATHS` included secrets
+* [.small]`CASC_VAULT_FILE` mounted approle credentials
+* The binding of secrets is explained later
+=====
+
+[.column-8x.small]
+=====
+[source,yaml]
+----
+containerEnv:
+  - name: 'CASC_VAULT_URL'
+    value: 'https://vault-vaas.mydomain.com'
+  - name: 'CASC_VAULT_PATHS'
+    value: 'secret/myteam/jenkins'
+  - name: 'CASC_VAULT_ENGINE_VERSION'
+    value: '2'
+  - name: 'CASC_VAULT_FILE'
+    value: '/run/secrets/jcasc_vault/approle'
+
+persistence:
+  enabled: true
+  existingClaim: 'jenkins-myteam'
+  mounts:
+    - name: 'vault-approle'
+      mountPath: '/run/secrets/jcasc_vault'
+      readOnly: true
+  volumes:
+    - name: 'vault-approle'
+      secret:
+        secretName: 'jenkins-myteam-vault'
+----
+=====
+====
+
+[.notes]
+====
+You can open the Vault-as-a-Service folders by pasting the part after `secret` in items from `CASC_VAULT_PATHS` at the end of this URl: link:https://vault-vaas.mydomain.com/ui/vault/secrets/secret/show[].
+
+The `persistence` part mounts the K8s sealed secret that used to interact with Vault. You will never need to touch this part of the code, it's just for information.
+
+Check out the link:./instance/vault-integration/README.md[README] if you want to learn more about Vault integration.
+====
+
+=== Credentials
+
+[.layout-columns]
+====
+[.column-5x.small]
+=====
+* icon:helm[] Config [.small]`/spec/values/controller/JCasC/configScripts`
+* Credentials powered by link:https://plugins.jenkins.io/credentials[credentials] plugin
+* Vault binding powered by link:https://plugins.jenkins.io/hashicorp-vault-plugin[hashicorp-vault-plugin]
+* Bash-like substitutions using the Vault ID
+* No push events from Vault emoji:warning[]
+=====
+
+[.column-7x.small]
+=====
+[source,yaml]
+----
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: 'GLOBAL'
+              id: 'nexus-credentials'
+              description: 'Used to push artifacts to Nexus as service user myteam-jenkins.'
+              username: 'myteam-jenkins'
+              password: ${nexus-credentials:-notSet}
+          - file:
+              scope: 'GLOBAL'
+              id: 'json-full-of-secrets'
+              description: |
+                JSON file with credentials for E2E job. Encode in base64, won't work otherwise
+              fileName: 'json-full-of-secrets'
+              # The default value is notSet in base64 🪄🪄🪄 ────┐
+              secretBytes: ${json-full-of-secrets-base64:-bm90U2V0}
+          - basicSSHUserPrivateKey:
+              scope: 'GLOBAL'
+              id: 'e2e-ssh-key'
+              username: 'jenkins-e2e-ssh-key'
+              description: 'Private SSH key file to connect to the VM hosting the product during E2E tests'
+              privateKeySource:
+                directEntry:
+                  privateKey: ${e2e-ssh-key:-notSet}
+          - string:
+              scope: 'GLOBAL'
+              id: 'e2e-instance-ip'
+              description: 'IP address for the instance where the RE is running for the E2E tests'
+              secret: ${e2e-instance-ip:-notSet}
+----
+=====
+====
+
+[.notes]
+====
+The *Vault plugin* allows *bash-like substitution* to read *Vault secrets* as if they were bash variables
+
+*Vault doesn't notify* when secrets are updated which means *Jenkins must re-fetch* them when they change
+
+You can do it manually by either re-starting the Jenkins instance or reloading the CasC (requires `Overall/Manage` permissions).
+====
+
+== The jobs configuration
+
+[.jobs-configuration-images]
+====
+image::jobs_configuration_folder_screen.avif[Folders,1545,475]
+image::jobs_configuration_job_screen.avif[Jobs,1634,1049]
+====
+
+=== Job DSL
+
+* Written in a Groovy DSL
+* icon:git[] Config in link:https://github.com/quilicicf/presentations/tree/mastersrc/jenkins-for-the-noobs/instance/src/main/groovy/jobs[gitops-repo/jobs] folder
+* Applied by the link:https://plugins.jenkins.io/job-dsl[Job DSL plugin]
+* Plugins contribute to the DSL so link:http://localhost:8201/jenkins/plugin/job-dsl/api-viewer/index.html[the doc is dynamic]
+
+[.notes]
+====
+The groovy DSL means that there are extensions to the Groovy syntax added by each plugin
+
+📝 Show the structure of the job DSL link, and the doc itself
+====
+
+[.notes]
+====
+Defines the organization of the Jenkins instance with folders/views
+
+Configures the jobs: how/when/what they run
+====
+
+[#test-folder]
+=== UI-centric test folder
+
+[.layout-columns]
+====
+[.column-4x.small]
+=====
+* Built to fiddle
+* Has special permissions
+=====
+
+[.column-8x.small.fragment]
+=====
+[source,yaml]
+----
+- name: '__fiddling__'
+  description: 'Fiddling Folder'
+  pattern: '^__fiddling__.*'
+  permissions:
+    - 'Credentials/Create'
+    - 'Credentials/Delete'
+    - 'Credentials/ManageDomains'
+    - 'Credentials/Update'
+    - 'Credentials/View'
+    - 'Job/Build'
+    - 'Job/Cancel'
+    - 'Job/Configure'
+    - 'Job/Create'
+    - 'Job/Discover'
+    - 'Job/Move'
+    - 'Job/Read'
+    - 'Job/Workspace'
+  entries:
+    - group: 'MyOrg*my-team'
+- name: '__fiddling/__'
+  description: 'Fiddling Folder'
+  pattern: '^__fiddling__/.*'
+  permissions:
+    - 'Job/Delete'
+  entries:
+    - group: 'MyOrg*my-team'
+----
+=====
+====
+
+[.notes]
+====
+The folder is supposed to contain nothing of importance so there's no issue if it's cleaned
+
+It is not filled by CasC, but rather built to be used from the UI.
+
+The configuration is editable due to specific rights added to the folder
+
+📝 Show config as XML, how the structure is similar to job DSL and how to find the relevant plugin
+====
+
+=== Validating job DSL
+
+* The Job DSL relies on plugins
+* One needs to load the right set of plugins to test
+* The best solution is to reproduce the instance plugin-wise
+* link:#casc-validation[My solution] that is link:https://github.com/quilicicf/presentations/tree/master/src/jenkins-for-the-noobs/instance[implemented here]
+* To check after deployment, see link:http://localhost:8201/jenkins/log[the logs]
+* emoji:warning[] If there was no CI validation, do check the logs!
+
+[.notes]
+====
+Since the Job DSL is composed partly by plugin contributions, it must be tested on a Jenkins instance that has exactly the same plugins installed as the target instance
+
+To do that, the best solution is to run a local Jenkins instance and install the same set of plugins inside it as the target instance
+
+A solution has been implemented, you can now test your instance locally and validate PRs with your Jenkins instance before merging them
+
+You should validate your Job DSL before pushing it to the instance, in case you can't, check the Jenkins logs afterward. Loading jobs doesn't break at runtime, but it does at startup which means a broken Job DSL is a time-bomb
+====
+
+== Pipelines configuration
+
+image::jenkinsfile_configuration_screen.avif[Pipeline screen,1830,856]
+
+=== Pipeline plugins
+
+* `workflow-*` family of plugins
+* Define triggers, parameters, notifiers, reports etc...
+* Implemented using link:https://www.jenkins.io/doc/book/pipeline/syntax[the Pipeline DSL]
+* Plugins can contribute, so link:http://localhost:8201/jenkins/pipeline-syntax[the doc is dynamic]
+* link:https://www.jenkins.io/doc/pipeline/steps[The full documentation] exists!
+* No validation currently
+* One _can_ use the REST API
++
+[source,shell]
+----
+curl --request 'POST' \
+  --form "jenkinsFile=&lt;${JENKINSFILE_PATH}" \
+  --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+  "${JENKINS_URL}/pipeline-model-converter/validate"
+----
+* If broken, the build doesn't start emoji:warning[]
+* Use the link:#test-folder[UI-centric test folder] to iterate
+
+[.notes]
+====
+Pipelines were developed by the community then added in the core later
+
+They define what the job does, its business logic
+
+The pipeline DSL is a Groovy extension, same as Job DSL, with features added by plugins
+
+The pipeline step reference should be your bible when you are trying to do something you've never done before
+
+Adding the validation in CI might prove problematic if the instance breaks down
+
+It might be possible with a local replicate instance though, but it'd have to be cross-repositories, hard
+
+Any help would be appreciated
+====
+
+=== Pipelines, Groovy, CPS
+
+* Jenkins uses standard parser and compiler...
+* But a specific interpreter to resume jobs, CPS
+* Of course, it comes from a plugin, link:https://plugins.jenkins.io/workflow-cps[workflow-cps]
+* It has significant overhead and limitations!
+* Example of error:
++
+[source,shell,role="small unlimited-width"]
+----
+Scripts not permitted to use staticMethod
+org.codehaus.groovy.runtime.DateGroovyMethods minus java.util.Date
+----
+* More information in link:https://www.jenkins.io/doc/book/pipeline/cps-method-mismatches[the documentation]
+* link:https://github.com/jenkinsci/workflow-cps-plugin/blob/workflow-cps-2.94.4/pom.xml#L71[Find the Groovy version]  used link:https://github.com/cloudbees/groovy-cps/blob/groovy-cps-parent-1.32/pom.xml#L19[in Jenkins]
+* link:https://groovyconsole.appspot.com[Play with Groovy]
+
+[.notes]
+====
+Not all of Groovy is usable in Jenkinsfiles, far from it
+
+The limitations come from the desired feature to be able to pause/resume jobs
+
+This means everything can be serialized and stored on disk while waiting for the job to resume, at the cost of a lot of features and performance
+
+The limitations are not documented well either and the error messages kind of cryptic
+
+icon:recommended[] Use Groovy only to wiring scripts written in other languages, you'll avoid most of the pain with CPS at the cost of resume-ability, which doesn't matter much anyway since stopping builds isn't that helpful. Also, you'd better aim for lightning-fast builds than allow them to be resumed mid-way
+
+You can find the version of Groovy used in your Jenkins instance by reading the pom.xml files of Jenkins, then of the CPS plugin. Make sure when you are testing some Groovy syntax that it's supported by the version of Groovy your instance runs
+====
+
+=== Pipeline shape
+
+[.layout-columns.small]
+====
+[.column-4x]
+=====
+* icon:recommended[] Keep configuration and logic apart
+* Execute the build piece-by-piece with stages
+* Sequential by default, unless using link:https://www.jenkins.io/doc/book/pipeline/syntax/#parallel[parallel]
+* Execute conditionally with link:https://www.jenkins.io/doc/book/pipeline/syntax/#when[when]
+* icon:recommended[] Stages must have a functional reason to be
+** Maintenance: readable, shows what failed
+** Conditional run: push image only if [.small]`params.SHOULD_RELEASE`
+** Iterate: More easily skipped
+=====
+
+[.column-8x]
+=====
+[source,groovy,role="fragment"]
+----
+// Configuration goes here
+
+pipeline {
+agent {}                          // Configure build pod
+triggers {}                       // Configure triggers
+parameters {}                     // Configure build parameters
+
+  stages {                          // Run job
+    stage('Validate parameters') {} // Fail fast if parameters are busted
+    stage ('Compile') {}
+    stage('Test') {
+      parallel {
+        stage('Run UTs') {
+          steps { echo 'UTs OK' }
+        }
+        stage('Run ITs') {
+          steps { echo 'ITs OK' }
+        }
+      }
+    }
+    stage('Tag/Commit/Push') {      // State-changing actions only when 99% sure they'll pass
+      when {                        // Some stages only run when it makes sense
+        expression {
+          return params.SHOULD_RELEASE
+        }
+      }
+    }
+  }
+
+  post {}                           // Runs after build, use for notifications, cleanup
+}
+----
+=====
+====
+
+[.notes]
+====
+Keeping configuration and logic apart makes maintenance easier as it's more readable. In the logic, you only use elements by their names rather than their values, so it reads as plain English. Also, you know immediately where you need to perform an update depending on the type of change you want to make
+
+Stages help you understand what piece of your build is failing
+
+The build can be setup to run stages only when some conditions are true. Ex: pushing deliverable only when parameter release is true
+
+Functional stages also mean your pipeline is easier to read and understand, it's more reader-oriented
+
+When you are working on the build, you can easily skip stages you don't need to run with temporary `when` calls
+====
+
+=== Kubernetes integration - part I
+
+[.subtitle]#Agent definition#
+
+[.layout-columns]
+====
+[.column-4x.small]
+=====
+* Configuration of link:https://www.jenkins.io/doc/book/pipeline/syntax/#agent[agent] running the stages
+* icon:jenkins_bowtie[] Defined in `/pipeline/agent`
+* icon:recommended[] Use [.small]`defaultContainer` !
+* The pod definition can come from [.small]`yaml` or [.small]`yamlFile`
+* [.small]`label` is deprecated, remove it!
+=====
+
+[.column-8x]
+=====
+[source,groovy,role="fragment"]
+----
+agent {
+  kubernetes {
+    yaml kubernetesPodDefinition
+    defaultContainer defaultContainerName
+  }
+}
+----
+=====
+====
+
+[.notes]
+====
+Lines annotated with icon:jenkins_bowtie[] show the JSON pointer of where the relevant part is in the Jenkinsfile
+
+The executors are K8s pods, defined in the Jenkinsfile
+
+Using a default container helps keep a clean Jenkinsfile and make sure everything's run in the same context. I advocate for using a single build image with (cached) `asdf` for tools because:
+
+* It simplifies maintenance: all stages execute in the same technical environment (OS, shell, installed CLI tools etc...)
+* It makes it trivial to run the build with exactly the same tools on CI and dev machines (with `asdf`), and the tools upgrade use the same mechanism. No more: `from that commit on, you need to use Java XYZ, and good luck when switching branches`
+
+The pod definition can be done in a YAML string, read from a file, or even created using the Groovy DSL
+
+The choice must balance tradeoffs (readability/copy-ability/templating/DRY...)
+====
+
+=== Kubernetes integration - part II
+
+[.subtitle]#Pod definition#
+
+[.layout-columns]
+====
+[.column-4x.small]
+=====
+* Define Docker containers
+* Define required resources
+* Mount caches with volumes
+* link:https://kubernetes.io/docs/tasks/configure-pod-container[Kubernetes documentation]
+* No validation, debug with `kubectl`
+* icon:git[] PVC's are declared as link:https://github.com/quilicicf/presentations/blob/master/src/jenkins-for-the-noobs/instance/pvc/asdf.yaml[K8s resources]
+=====
+
+[.column-8x.small]
+=====
+// FIXME: show docker-in-docker!
+[source,yaml,role="fragment"]
+----
+apiVersion: 'v1'
+kind: 'Pod'
+spec:
+  imagePullSecrets:
+    - name: 'org-registry' # Credentials to use to pull Docker images (K8s secret)
+  containers: # Containers in the pod, usually one is enough
+    - name: 'default-container' # Use in /agent/kubernetes/defaultContainer
+      image: 'myorg.dockerhub.com/jenkins/asdf-builder:1.0.0'
+      tty: true # tty & command used to keep the image up
+      command: [ 'cat' ]
+      env:
+        - name: 'DOCKER_HOST' # Connect to the Docker daemon in next container
+          value: 'tcp://localhost:2375'
+      resources: # Resources requested, adjust depending on what you build
+        requests: { memory: '2G', cpu: '2' }
+        limits: { memory: '8G' } # Don't limit the CPU!
+      volumeMounts: # Mount volumes in the container (see volumes section below)
+        - name: 'asdf' # asdf cache
+          mountPath: '/home/jenkins/.asdf/installs'
+    - name: 'docker-daemon' # Container that hosts the Docker daemon/socket
+      image: 'docker:24.0.2-dind-rootless' # Use the rootless version
+      command: [ 'dockerd-entrypoint.sh' ] # Override to add parameters
+      args: [ '--tls=false' ] # De-activate TLS (not possible in rootless mode)
+      env: # No certificate since it's not used (faster startup)
+        - { name: 'DOCKER_TLS_CERTDIR', value: '' }
+
+      securityContext:
+        privileged: true # For image bootstrap, switches back to rootless at startup
+  volumes: # What Cloud resources the volumes map to
+    - name: 'asdf' # PVC's are persistent file systems
+      persistentVolumeClaim:
+        claimName: 'asdf'
+----
+=====
+====
+
+[.notes]
+====
+One can define the required resources to help the cluster determine whether new nodes are required
+
+Caches make builds faster, but they can break them if not setup properly (concurrent access can cause corruption)
+
+The K8s doc can help you go further, you shouldn't need it though
+
+Validating K8s resources should be pretty easy, but I've never taken the time to try it yet, ROI is low since this changes rarely. Builds break without much help
+
+Setting up a PVC for cache is pretty easy and done as-code
+====
+
+=== Credentials
+
+[.layout-columns]
+====
+[.column-5x.small]
+=====
+* Credentials come from link:https://www.jenkins.io/doc/pipeline/steps/credentials-binding[credentials-binding plugin]
+* File config come from link:https://plugins.jenkins.io/config-file-provider[config-file-provider plugin]
+* Credentials masked in logs by default
+* Beware of multi-line credentials! emoji:warning[]
+* Properly escape credentials! emoji:warning[]
+=====
+
+[.column-7x.fragment]
+=====
+[.subtitle]#Top of the file#
+
+[source,groovy,role="small"]
+----
+final def GITHUB_CREDENTIALS = usernamePassword(
+  credentialsId: 'github-credentials', // Jenkins ID from global configuration declaration
+  usernameVariable: 'GITHUB_LOGIN', // Environment variable where username is injected
+  passwordVariable: 'GITHUB_PASSWORD') // Environment variable where password is injected
+----
+
+[.subtitle]#In stage#
+
+[source,groovy,role="small"]
+----
+steps {
+  withCredentials([ GITHUB_CREDENTIALS ]) {
+    sh """\
+      bash build.sh \\
+        '${GITHUB_LOGIN}' \\
+        "\${GITHUB_PASSWORD}"
+    """.stripIndent()
+  }
+}
+----
+
+[.subtitle]#Generated shell script#
+
+[source,shell,role="small"]
+----
+bash build.sh \
+  'ci-user' \
+  "${GITHUB_PASSWORD}"
+----
+=====
+====
+
+[.notes]
+====
+Jenkins uses the information from credentials retrieval to replace secrets by `+***+` in logs
+
+The replacement seems to be done line-by-line which implies that multi-line credentials are not protected
+
+Escape your credentials to make sure the (vulnerable) Groovy layer has no access to it
+
+Generate a shell script that interpolates the variable and doesn't receive it in clear text
+====
+
+=== Parameters
+
+[.layout-columns.small]
+====
+[.column-4x]
+=====
+* Parameterize build with user input
+* icon:jenkins_bowtie[] Defined in [.small]`/pipeline/parameters`
+* Specified when running the build (UI/API)
+* Default values when triggered by SCM
+* Check out the link:https://www.jenkins.io/doc/book/pipeline/syntax/#parameters[documentation]
+* Plugins can add new types
+=====
+
+[.column-8x]
+=====
+[source,groovy,role="fragment"]
+----
+parameters {
+  string( // Text input
+    name: 'STRING_PARAM_NAME',
+    defaultValue: '',
+    description: 'Help text')
+  text( // Text area
+    name: 'TEXT_PARAM_NAME',
+    defaultValue: '',
+    description: 'Help text')
+  password( // Password input
+    name: 'PASSWORD_PARAM_NAME',
+    defaultValue: '',
+    description: 'Help text')
+  booleanParam( // Check-box
+    name: 'BOOLEAN_PARAM_NAME',
+    defaultValue: false,
+    description: 'Help text')
+  choice( // Drop-down list, first value is the default
+    name: 'CHOICE_PARAM_NAME',
+    choices: [ 'choice1', 'choice2' ],
+    description: 'Help text')
+}
+----
+=====
+====
+
+[.notes]
+====
+Can be specified via the UI or the API, be careful, there are subtleties!
+
+The UI can change what's executed. Ex: text inputs can remove line breaks, so rebuild works but not initial API build
+
+When triggerred automatically, default values used for all parameters
+
+Most Jenkins instances use simple parameters from core, but some plugins can add interesting options
+
+Ex: list of git branches, JIRA versions...
+====
+
+=== Triggers
+
+[.layout-columns.small]
+====
+[.column-6x]
+=====
+* icon:jenkins_bowtie[] Defined in [.small]`/pipeline/triggers`
+* There are link:http://localhost:8201/jenkins/plugin/job-dsl/api-viewer/index.html#path/pipelineJob[a lot of those]
+* Only a few really useful
+* link:http://localhost:8201/jenkins/plugin/job-dsl/api-viewer/index.html#path/pipelineJob-triggers-cron[cron] is included in a core plugin
+* link:http://localhost:8201/jenkins/plugin/job-dsl/api-viewer/index.html#path/pipelineJob-triggers-parameterizedCron[parameterizedCron]
+comes from the link:https://plugins.jenkins.io/parameterized-scheduler[parameterized-scheduler plugin]
+* Both are based on the link:https://en.wikipedia.org/wiki/Cron[cron] syntax
+* Check out link:https://crontab.guru[crontab guru] to edit them
+=====
+
+[.column-6x]
+=====
+[source,groovy,role="fragment"]
+----
+triggers {
+  cron(env.BRANCH_NAME == 'main' ? '0 5 * * 1' : '')
+  parameterizedCron """\
+    0 5 * * 1 %PARAM1_NAME=value1;PARAM2_NAME=value2
+    0 6 * * 1 %PARAM1_NAME=value1;PARAM2_NAME=value2
+  """.stripIndent()
+}
+----
+=====
+====
+
+[.notes]
+====
+CRONs are important since some actions take a lot of time and don't need to be tested on each commit. Ex: deps staleness, CVEs...
+
+CRONs can be parameterized to take full advantage of the build, this requires a non-core plugin
+
+The CRON syntax is standardized, a good CRON editor saves lives
+====
+
+=== Slack
+
+[.layout-columns.small]
+====
+[.column-4x]
+=====
+* icon:casc[] Slack URL configured in global configuration
+* Use method [.small]`slackSend` to send Slack messages
+* Colors: [.small]`good, warning, danger` (or hex code)
+* Message: use Slack's link:https://api.slack.com/reference/surfaces/formatting[mrkdown] syntax
+* The other parameters are not useful
+=====
+
+[.column-8x]
+=====
+[source,groovy,role="fragment"]
+----
+slackSend(
+    color: 'success',
+    channel: 'my-slack-channel',
+    message: "KO `${env.BRANCH_NAME}-${env.GIT_COMMIT.take(7)}` <${env.BUILD_URL}|Open>"
+)
+----
+=====
+====
+
+[.notes]
+====
+The color is displayed next to the message, it's a good idea to color-code the messages to bring focus on CTAs
+
+The `mrkdown` syntax is awful, close to Markdown but not it. Read the doc!
+
+Remember, the more notifications people get the less likely it is they'll read them. Choose your notifications and the channels they are sent to carefully
+====
+
+=== Scripts
+
+[.layout-columns.small]
+====
+[.column-4x]
+=====
+* Shell steps add a *significant overhead*! emoji:warning[]
+* icon:recommended[] Scripts belong in a separate file
+* icon:recommended[] Parameters should be hard-wired
+* icon:recommended[] Shell scripts should be as stupid as possible
+* icon:recommended[] Repository specificities should not leak in scripts
+* Beware of quoting! Empty and unset parameters differ
+// TODO: update the link!
+* Shameless plug link:https://todo.com/bash-for-the-noobs[Bash > /dev/null]
+=====
+
+[.column-8x.fragment]
+=====
+[.subtitle]#In the Jenkinsfile#
+
+[source,groovy]
+----
+sh """\
+  bash ci/scripts/build.sh \\
+    '${params.MAVEN_PROFILE}' \\
+    "\${MAVEN_SETTINGS}"
+""".stripIndent()
+----
+
+[.subtitle]#In the shell script#
+
+[source,shell]
+----
+#!/user/bin/env bash
+set -euxo                                 # Verbose, fails fast, forbids unset variables
+
+main() (                                  # Main method, sub-shelled
+  profile="${1:?Missing Maven profile}"   # Hard, explicit fail in case of error
+  settings="${2:?Missing Maven settings}"
+
+  mvn verify \                            # Not install, verify!
+    --activate-profiles "${profile}" \    # Long flags, 1 purpose/line
+    --settings "${settings}"              # Generic, simple, stupid
+)
+
+main "$@"                                 # Execute the method
+----
+=====
+====
+
+[.notes]
+====
+Separate file means: testable & IDE-integrated
+
+It's easier to follow the values when they are hardwired. The verbosity is absolutely worth it!
+
+If too complex, switch to a more powerful language, shell is not very maintainable
+
+If they leak in the script, you'll get a lot of jobs that do almost the same things with slight changes
+
+Good luck creating a shared lib to abstract that later!
+
+If you pass the parameters within quotes (which I strongly recommend to avoid index shifts), unset must be considered an error
+====
+
+=== Shared libs
+
+* Allow centralization of Jenkinsfile parts
+* Libs are repositories configured in global configuration
+* Referenced with git refs in the Jenkinsfiles
+* Allow putting logic in the lib and configuration in the product
+* Abstract the Jenkinsfiles, harder to validate emoji:warning[]
+* Require more team discipline emoji:warning[]
+
+[.notes]
+====
+It is extremely easy to start using the shared libs, but there are significant tradeoffs
+
+I'll dedicate a specific training to this if there's interest around it
+
+// TODO: add specific section
+====
+
+== Tips & tricks
+
+=== Restart Jenkins
+
+Restart Jenkins (to get start logs for example)
+
+Open [.small]`+https://${JENKINS_DOMAIN}/safeRestart+`
+
+image::restart.avif[Restart Jenkins,1033,473]
+
+=== Replay
+
+Replay a job with edited Jenkinsfile
+
+image::replay_jenkinsfile.avif[Replay menu option,1022,655]
+
+== Conclusion
+
+=== Sources
+
+[.subtitle]#The _crême de la crême_, your bedside reading#
+
+* link:https://github.com/jenkinsci/helm-charts[Jenkins helm-chart]
+* link:https://plugins.jenkins.io/configuration-as-code[CasC plugin]
+* link:http://localhost:8201/jenkins/configuration-as-code/reference[CasC dynamic doc]
+* link:https://plugins.jenkins.io/job-dsl[Job DSL plugin]
+* link:http://localhost:8201/jenkins/plugin/job-dsl/api-viewer/index.html[Job DSL dynamic doc]
+* link:https://www.jenkins.io/doc/pipeline/steps[Pipeline steps full documentation]
+* link:http://localhost:8201/jenkins/pipeline-syntax[Pipeline steps dynamic doc] with link:http://localhost:8201/jenkins/pipeline-syntax/globals[environment variables guide]
+
+=== Q&A
+
+[.subtitle]#Ask me anything#
+
+[#casc-validation]
+=== CasC validation

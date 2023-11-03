@@ -1,0 +1,14 @@
+kind: 'PersistentVolumeClaim'
+apiVersion: 'v1'
+metadata:
+  name: 'pvc-docker-daemon'
+  namespace: 'jenkins-myteam'
+spec:
+  accessModes:
+    - 'ReadWriteOnce' # Files manipulated by a Docker Daemon must be manipulated by one and only one
+  resources:
+    requests:
+      storage: '20Gi'
+  storageClassName: 'gp2'
+  # "gp2" storageClass is mandatory for DinD to work (issue with rootless mode and NFS)
+  # With "aws-efs" value we encounter the error: lchown /etc/tcsd.conf: operation not permitted

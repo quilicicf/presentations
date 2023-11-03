@@ -1,4 +1,5 @@
 dist/
+.a2r-cache/
 
 # Logs
 logs

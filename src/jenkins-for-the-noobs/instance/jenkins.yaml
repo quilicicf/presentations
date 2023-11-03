@@ -1,0 +1,282 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: jenkins-myteam
+  namespace: ci
+spec:
+  releaseName: jenkins-myteam
+  maxHistory: 3
+  interval: 5m
+  timeout: 15m0s
+  chart:
+    spec:
+      chart: jenkins
+      version: 4.9.0 # Jenkins 2.426.1, https://github.com/jenkinsci/helm-charts/blob/main/charts/jenkins/CHANGELOG.md#490
+      sourceRef:
+        kind: HelmRepository
+        name: jenkins
+        namespace: flux-system
+  upgrade:
+    force: false
+    remediation:
+      remediateLastFailure: true
+  rollback:
+    force: false
+  values:
+    fullnameOverride: jenkins-myteam
+
+    agent:
+      image: jenkins/inbound-agent
+      imagePullSecretName: myorg-registry
+      namespace: jenkins-myteam
+      containerCap: ''
+
+    controller:
+      image: jenkins/jenkins
+      imagePullSecretName: myorg-registry
+      jenkinsUrl: https://jenkins-myteam.com
+      adminSecret: false
+
+      podSecurityContextOverride: # Fix attempt for startup error: FailedMount | Unable to attach or mount volumes
+        runAsNonRoot: true
+        runAsUser: 1000
+        supplementalGroups:
+          - 1000
+
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: '4'
+          memory: 2Gi
+
+      containerEnv:
+        - name: CASC_VAULT_URL
+          value: http://localhost:8200 # Plugged to a local Vault instance for tests
+        - name: CASC_VAULT_PATHS
+          value: secret/myteam/jenkins,secret/myteam/approle
+        - name: CASC_VAULT_ENGINE_VERSION
+          value: '2'
+#       WARNING: For prod use, the sealed secret replaces usage of CASC_VAULT_APPROLE & CASC_VAULT_APPROLE_SECRET with CASC_VAULT_FILE
+#        - name: CASC_VAULT_FILE
+#          value: /run/secrets/jcasc_vault/approle
+        - name: CASC_VAULT_APPROLE
+          value: '62fab527-0164-1f92-bb47-5ff3e2fb4c81'
+        - name: CASC_VAULT_APPROLE_SECRET
+          value: '56fcafcd-6acb-3a33-78fa-6b2d093b2c12'
+
+      installLatestPlugins: true
+      initializeOnce: false
+      installPlugins:
+        - configuration-as-code   # Configure Jenkins as code https://plugins.jenkins.io/configuration-as-code
+        - git   # Integration with git https://plugins.jenkins.io/git
+        - kubernetes   # Run dynamic agents in a K8s cluster https://plugins.jenkins.io/kubernetes
+        - prometheus   # Let Jenkins provide prometheus metrics https://plugins.jenkins.io/kubernetes
+        - workflow-aggregator   # Add pipelines to Jenkins https://plugins.jenkins.io/workflow-aggregator
+
+      # Use overwritePlugins to work around bugs deep in the dependency tree.
+      # Example value: [ 'trilead-api:1.0.5' ] to overwrite the plugin trilead-api to version 1.0.5
+      # De-activate with value: true
+      overwritePlugins: true
+      additionalPlugins:
+        - ansicolor   # Support ANSI escape codes for console output https://plugins.jenkins.io/ansicolor
+        - authorize-project   # Run jobs as any user https://plugins.jenkins.io/authorize-project
+        - basic-branch-build-strategies   # Add branch strategies to job configurations https://plugins.jenkins.io/basic-branch-build-strategies
+        - branch-api   # Add configuration options to branch jobs https://plugins.jenkins.io/branch-api
+        - build-timestamp   # Create build timestamps and expose them in the environment https://plugins.jenkins.io/build-timestamp
+        - cloudbees-disk-usage-simple   # Add disk usage in administration page https://plugins.jenkins.io/cloudbees-disk-usage-simple
+        - config-file-provider   # Provide config files like maven settings to jobs https://plugins.jenkins.io/config-file-provider
+        - copyartifact   # Copy archived artifacts from one build to another https://plugins.jenkins.io/copyartifact
+        - custom-folder-icon   # Customize folder icons https://plugins.jenkins.io/custom-folder-icon
+        - credentials-binding   # Provide credentials like (GitHub, artifactory) to jobs https://plugins.jenkins.io/credentials-binding
+        - disable-github-multibranch-status # Disable standard commit status setter for non-build/test jobs https://plugins.jenkins.io/disable-github-multibranch-status
+        - extended-read-permission # Add Jobs/ExtendedRead and Overall/SystemRead https://plugins.jenkins.io/extended-read-permission
+        - github-label-filter   # Build PRs that have some specific set of labels https://plugins.jenkins.io/github-label-filter
+        - github-oauth   # Authentication with GitHub OAuth https://plugins.jenkins.io/github-oauth
+        - github-scm-trait-notification-context   # Set custom notification contexts on GitHub commit statuses https://plugins.jenkins.io/github-scm-trait-notification-context
+        - hashicorp-vault-plugin   # Map Vault credentials in Jenkins https://plugins.jenkins.io/hashicorp-vault-plugin
+        - hashicorp-vault-pipeline   # Retrieve Vault secrets directly from pipeline https://plugins.jenkins.io/hashicorp-vault-pipeline
+        - job-dsl   # Define jobs programmatically with a DSL https://plugins.jenkins.io/job-dsl
+        - manage-permission   # Provides the Jenkins permission Overall/Manage https://plugins.jenkins.io/manage-permission
+        - markdown-formatter   # Format markdown in item descriptions https://plugins.jenkins.io/markdown-formatter
+        - matrix-auth   # Fine-grained access control https://plugins.jenkins.io/matrix-auth
+        - parameterized-scheduler   # Schedule builds with parameters https://plugins.jenkins.io/parameterized-scheduler
+        - pipeline-utility-steps   # Pipeline utils like readMavenPom https://plugins.jenkins.io/pipeline-utility-steps
+        - rebuild   # Add button to re-build jobs https://plugins.jenkins.io/rebuild
+        - role-strategy   # Create roles that grant permissions and assign people to them https://plugins.jenkins.io/role-strategy
+        - slack   # Slack notifications https://plugins.jenkins.io/slack
+        - sonar   # Sonar scans https://plugins.jenkins.io/sonar
+        - simple-theme-plugin   # Update Jenkins style with CSS/JS https://plugins.jenkins.io/simple-theme-plugin
+        - ssh-agent   # Connect to GitHub via SSH https://plugins.jenkins.io/ssh-agent
+        - timestamper   # Add timestamp to each console output line https://plugins.jenkins.io/timestamper
+        - workflow-durable-task-step   # Lock agent so they survive Jenkins restart https://plugins.jenkins.io/workflow-durable-task-step
+        - workflow-job   # Provide pipeline job types https://plugins.jenkins.io/workflow-job
+        - workflow-scm-step   # Allow pipelines to check out git code https://plugins.jenkins.io/workflow-scm-step
+        - workflow-support   # Persistance and step visualization for pipelines https://plugins.jenkins.io/workflow-support
+
+      JCasC:
+        securityRealm: |-
+          github:
+            githubWebUri: "https://github.com"
+            githubApiUri: "https://api.github.com"
+            clientID: "${github-oauth-clientid-jenkins-myteam:-notSet}"
+            clientSecret: "${github-oauth-secret-jenkins-myteam:-notSet}"
+            oauthScopes: "read:org,user:email"
+        authorizationStrategy: |-
+          roleBased:
+            roles:
+              global:
+                - name: administrators
+                  description: Jenkins Administrators
+                  permissions:
+                    - Overall/Administer
+                  entries:
+                    - group: MyOrg*ci-masters
+                    - user: service-user
+                - name: myteam-developers
+                  description: Developers from my team
+                  permissions:
+                    - Overall/Read
+                    - Overall/Manage
+                    - Overall/SystemRead
+                    - View/Read
+                    - Agent/Build
+                    - Agent/Configure
+                    - Agent/Connect
+                    - Agent/Create
+                    - Agent/Delete
+                    - Agent/Disconnect
+                    - Agent/Provision
+                    - Credentials/View
+                    - Job/Build
+                    - Job/Cancel
+                    - Job/Discover
+                    - Job/ExtendedRead
+                    - Job/Read
+                    - Job/Workspace
+                    - Run/Replay
+                  entries:
+                    - group: MyOrg*myteam
+                - name: myorg-mydepartment
+                  description: MyOrg, my department
+                  permissions:
+                    - Overall/Read
+                    - View/Read
+                    - Agent/Build
+                    - Agent/Configure
+                    - Agent/Connect
+                    - Agent/Create
+                    - Agent/Delete
+                    - Agent/Disconnect
+                    - Agent/Provision
+                    - Credentials/View
+                    - Job/Build
+                    - Job/Cancel
+                    - Job/Discover
+                    - Job/ExtendedRead
+                    - Job/Read
+                    - Job/Workspace
+                  entries:
+                    - group: MyOrg*mydepartment
+              items:
+                - name: fiddling
+                  description: Tests Folder
+                  pattern: ^__FIDDLING__.*
+                  permissions:
+                    - Credentials/Create
+                    - Credentials/Delete
+                    - Credentials/ManageDomains
+                    - Credentials/Update
+                    - Credentials/View
+                    - Job/Build
+                    - Job/Cancel
+                    - Job/Configure
+                    - Job/Create
+                    - Job/Discover
+                    - Job/Move
+                    - Job/Read
+                    - Job/Workspace
+                  entries:
+                    - group: MyOrg*myteam
+                - name: __fiddling/__
+                  description: Tests Folder
+                  pattern: ^__FIDDLING__/.*
+                  permissions:
+                    - Job/Delete
+                  entries:
+                    - group: MyOrg*myteam
+        configScripts: # Keep one config script here to avoid the default config script which is buggy
+          cosmetics: |-
+            jenkins:
+              systemMessage: |-
+                # Welcome to my team's Jenkins instance
+
+                To contribute here, please read [the manual](https://github.com/MyOrg/gitops-repo/README.md) first!
+
+                If you have to change anything or you feel like the manual is not comprehensive, please report it or update the manual.
+
+                __Please__ keep things tidy, if in doubt about anything, ask away!.
+            
+                ---
+
+      scriptApproval:
+        - field org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval$PendingSignature
+          dangerous
+        - field org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval$PendingSignature
+          signature
+        - method groovy.json.JsonSlurper parse java.io.InputStream
+        - method org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval approveSignature
+          java.lang.String
+        - method org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval denySignature
+          java.lang.String
+        - method org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval getDangerousApprovedSignatures
+        - method org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval getPendingScripts
+        - method org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval getPendingSignatures
+        - staticMethod org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval get
+
+      ingress:
+        enabled: true
+        labels:
+          access: traefikv2-ci-tcp
+        annotations:
+          kubernetes.io/ingress.class: traefikv2-ci-tcp
+          ingress.kubernetes.io/custom-request-headers: X-Forwarded-Proto:https||X-Forwarded-Port:443
+          traefik.ingress.kubernetes.io/router.middlewares: ci-jenkins-custom-headers@kubernetescrd
+        hostName: jenkins-myteam.com
+
+      markupFormatter: markdownFormatter
+
+      nodeSelector:
+        app: jenkins
+
+      prometheus:
+        enabled: true
+        serviceMonitorAdditionalLabels:
+          prometheus: prometheus-kube-cluster
+
+      sidecars:
+        configAutoReload:
+          image: kiwigrid/k8s-sidecar:1.25.2
+
+      tolerations:
+        - key: app
+          value: jenkins
+          operator: Equal
+          effect: NoSchedule
+
+    persistence:
+      enabled: true
+      existingClaim: jenkins-myteam
+      mounts:
+        - name: vault-approle
+          mountPath: /run/secrets/jcasc_vault
+          readOnly: true
+      volumes:
+        - name: vault-approle
+          secret:
+            secretName: jenkins-myteam-vault
+
+    rbac:
+      create: true
+      readSecrets: true

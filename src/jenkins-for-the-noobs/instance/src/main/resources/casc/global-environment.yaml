@@ -1,0 +1,14 @@
+jenkins:
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: 'DOCKER_REGISTRY_HOST' # Host to my org's private docker registry
+            value: 'docker-registry.myorg.com'
+          - key: 'NEXUS_URL' # URL to my org's private Nexus
+            value: 'https://nexus.myorg.com'
+
+          #######################################
+          # Location of the PVCs used as caches #
+          #######################################
+          - key: 'CACHE_ASDF'
+            value: 'pvc-asdf'

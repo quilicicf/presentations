@@ -1,0 +1,85 @@
+apiVersion: 'apps/v1'
+kind: 'Deployment'
+metadata:
+  name: 'deployment-myteam-docker-daemon'
+  namespace: 'jenkins-myteam'
+  annotations:
+    fluxcd.io/automated: 'true'
+    checksum/config: {{include (print $.Template.BasePath "/docker-in-docker-configmap.yaml") . | sha256sum}}
+spec:
+  selector:
+    matchLabels:
+      app: 'myteam-docker-daemon'
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: 'myteam-docker-daemon'
+    spec:
+      imagePullSecrets:
+        - name: myorg-registry
+      securityContext:
+        fsGroup: 1000 # rootless group
+        runAsUser: 1000 # rootless user
+        runAsGroup: 1000 # rootless group
+      containers:
+        - name: 'docker-daemon-container'
+          image: 'docker:24.0.3-dind-rootless'
+          imagePullPolicy: 'IfNotPresent'
+          # TLS Disabled
+          # The unique way to disable TLS of Docker daemon
+          # 1/3 -> override the default entrypoint to add more parameter
+          command:
+            - 'dockerd-entrypoint.sh'
+          # 2/3 -> add the parameter that fully disable the TLS mode
+          args:
+            [
+              '--tls=false',
+              '--data-root=/home/rootless/.local/share/docker/rootless',
+              '--config-file=/home/rootless/docker-config.json'
+            ]
+          env:
+            # 3/3 -> make sure we don't fall into the condition that generates the certificate
+            - name: 'DOCKER_TLS_CERTDIR'
+              value: ''
+            # To remove some warning log at container startup
+            - name: 'TINI_SUBREAPER'
+              value: 'true'
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '256Mi'
+            limits:
+              cpu: '1'
+              memory: '4Gi'
+          securityContext:
+            # REQUIRED
+            # According the Docker's documentation, `privileged` mode is required
+            # (https://docs.docker.com/engine/security/rootless/#rootless-docker-in-docker)
+            privileged: true
+          ports:
+            - name: 'daemon-port'
+              containerPort: 2375
+              protocol: 'TCP'
+          livenessProbe:
+            tcpSocket:
+              port: 'daemon-port'
+            initialDelaySeconds: 10
+            periodSeconds: 2
+          volumeMounts:
+            - mountPath: '/home/rootless/docker-config.json'
+              name: 'configmap-myteam-docker-daemon'
+              subPath: 'docker-config.json'
+
+            # Where Docker In Docker Rootless stores its data (not the same for DinD standard)
+            - mountPath: '/home/rootless/.local/share/docker'
+              name: 'pvc-docker-daemon'
+
+      volumes:
+        - name: 'configmap-myteam-docker-daemon'
+          configMap:
+            name: 'configmap-myteam-docker-daemon'
+            defaultMode: '0755'
+        - name: 'pvc-docker-daemon'
+          persistentVolumeClaim:
+            claimName: 'pvc-docker-daemon'
