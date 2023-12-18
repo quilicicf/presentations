@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="TEST_INSTANCE" type="GradleRunConfiguration" factoryName="Gradle">
+  <configuration default="false" name="START_TEST_INSTANCE" type="GradleRunConfiguration" factoryName="Gradle">
     <ExternalSystemSettings>
       <option name="env">
         <map>
@@ -11,7 +11,7 @@
         </map>
       </option>
       <option name="executionName" />
-      <option name="externalProjectPath" value="$PROJECT_DIR$/src/jenkins-for-the-noobs/instance" />
+      <option name="externalProjectPath" value="$PROJECT_DIR$/src/jenkins-for-the-noobs/gitops-repo" />
       <option name="externalSystemIdString" value="GRADLE" />
       <option name="scriptParameters" value="" />
       <option name="taskDescriptions">

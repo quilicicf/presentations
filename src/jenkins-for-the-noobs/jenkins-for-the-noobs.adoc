@@ -18,7 +18,7 @@
 
 *Targeted goal:* full autonomy to use Jenkins, near-full autonomy to administrate it (some scarce parts need operating team's intervention for security reasons).
 
-*How to run that presentation:* run the link:./instance/src/test/groovy/TestInstance.groovy[`TestInstance`] class with link:../../.idea/runConfigurations/TEST_INSTANCE.xml[the associated run configuration] so that dynamic links in the presentation work
+*How to run that presentation:* run the link:./gitops-repo/src/test/groovy/TestInstance.groovy[`TestInstance`] class with link:../../.idea/runConfigurations/TEST_INSTANCE.xml[the associated run configuration] so that dynamic links in the presentation work
 
 // TODO: Write full documentation for test instance run
 // TODO: either use CASC_VAULT_FILE in the run configuration to avoid putting credentials in the run config or change the README for Vault to use static credentials if possible
@@ -442,7 +442,7 @@ You can open the Vault-as-a-Service folders by pasting the part after `secret` i
 
 The `persistence` part mounts the K8s sealed secret that used to interact with Vault. You will never need to touch this part of the code, it's just for information.
 
-Check out the link:./instance/vault-integration/README.md[README] if you want to learn more about Vault integration.
+Check out the link:./gitops-repo/vault-integration/README.md[README] if you want to learn more about Vault integration.
 ====
 
 === Credentials
@@ -517,7 +517,7 @@ image::jobs_configuration_job_screen.avif[Jobs,1634,1049]
 === Job DSL
 
 * Written in a Groovy DSL
-* icon:git[] Config in link:https://github.com/quilicicf/presentations/tree/mastersrc/jenkins-for-the-noobs/instance/src/main/groovy/jobs[gitops-repo/jobs] folder
+* icon:git[] Config in link:https://github.com/quilicicf/presentations/tree/mastersrc/jenkins-for-the-noobs/gitops-repo/src/main/groovy/jobs[gitops-repo/jobs] folder
 * Applied by the link:https://plugins.jenkins.io/job-dsl[Job DSL plugin]
 * Plugins contribute to the DSL so link:http://localhost:8201/jenkins/plugin/job-dsl/api-viewer/index.html[the doc is dynamic]
 
@@ -596,7 +596,7 @@ The configuration is editable due to specific rights added to the folder
 * The Job DSL relies on plugins
 * One needs to load the right set of plugins to test
 * The best solution is to reproduce the instance plugin-wise
-* link:#casc-validation[My solution] that is link:https://github.com/quilicicf/presentations/tree/master/src/jenkins-for-the-noobs/instance[implemented here]
+* link:#casc-validation[My solution] that is link:https://github.com/quilicicf/presentations/tree/master/src/jenkins-for-the-noobs/gitops-repo[implemented here]
 * To check after deployment, see link:http://localhost:8201/jenkins/log[the logs]
 * emoji:warning[] If there was no CI validation, do check the logs!
 
@@ -810,7 +810,7 @@ The choice must balance tradeoffs (readability/copy-ability/templating/DRY...)
 * Mount caches with volumes
 * link:https://kubernetes.io/docs/tasks/configure-pod-container[Kubernetes documentation]
 * No validation, debug with `kubectl`
-* icon:git[] PVC's are declared as link:https://github.com/quilicicf/presentations/blob/master/src/jenkins-for-the-noobs/instance/pvc/asdf.yaml[K8s resources]
+* icon:git[] PVC's are declared as link:https://github.com/quilicicf/presentations/blob/master/src/jenkins-for-the-noobs/gitops-repo/pvc/asdf.yaml[K8s resources]
 =====
 
 [.column-8x.small]

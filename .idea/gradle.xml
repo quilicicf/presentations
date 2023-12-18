@@ -5,12 +5,11 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="distributionType" value="LOCAL" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$/src/jenkins-for-the-noobs/instance" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/src/jenkins-for-the-noobs/gitops-repo" />
         <option name="gradleHome" value="$USER_HOME$/.asdf/installs/gradle/8.1.1" />
-        <option name="gradleJvm" value="17" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$/src/jenkins-for-the-noobs/instance" />
+            <option value="$PROJECT_DIR$/src/jenkins-for-the-noobs/gitops-repo" />
           </set>
         </option>
       </GradleProjectSettings>
