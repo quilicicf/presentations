@@ -1,3 +1,4 @@
 groovy 2.4.21
 java adoptopenjdk-17.0.6+10
+gradle 8.1.1
 deno 1.37.2

@@ -1,0 +1,27 @@
+version: '3.9'
+services:
+  vault:
+    image: 'vault:1.13.3'
+    hostname: 'vault'
+    container_name: 'vault'
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: 'dev-only-token'
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+    ports:
+      - '8200:8200'
+  vault-setup:
+    image: 'vault:1.13.3'
+    container_name: 'vault-setup'
+    depends_on:
+      - 'vault'
+    restart: 'no'
+    environment:
+      VAULT_ADDR: 'http://vault:8200'
+      VAULT_TOKEN: 'dev-only-token'
+      VAULT_NAMESPACE: 'admin'
+      GITHUB_PASSWORD: "$GITHUB_PASSWORD" # Edit ./.env file to give a real value. It is git-ignored to avoid oopsies
+      GITHUB_APP_CLIENT_ID: "$GITHUB_APP_CLIENT_ID" # Edit ./.env file to give a real value. It is git-ignored to avoid oopsies
+      GITHUB_APP_SECRET_ID: "$GITHUB_APP_SECRET_ID" # Edit ./.env file to give a real value. It is git-ignored to avoid oopsies
+    volumes:
+      - ./vault-init.sh:/vault-init.sh
+    entrypoint: [ 'sh', '/vault-init.sh' ]

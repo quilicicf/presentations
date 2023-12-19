@@ -1,3 +1,6 @@
 # Gradle folders
 build/
 .gradle/
+
+# Folder with generated config maps
+generated/

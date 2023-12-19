@@ -35,13 +35,13 @@ Open the Vault instance you just started, and create the secrets:
 * In path `secret/myteam/approle`:
   * `approle-id`: the `roleId` generated earlier
   * `approle-token`: the `secretId` generated earlier
-* In path `secret/myteam/jenkins`: the credentials defined in [the CasC file](../src/main/resources/casc/credentials.yaml)
+* In path `secret/myteam/jenkins`: the credentials defined in [the CasC file](../gitops-repo/src/main/resources/casc/credentials.yaml)
 
 ## Map the secrets
 
 ### For the test instance
 
-Open [jenkins.yaml](../jenkins.yaml) and put the `roleId` resp. `secretId` in `CASC_VAULT_APPROLE` resp. `CASC_VAULT_APPROLE_SECRET`.
+Open [jenkins.yaml](../gitops-repo/jenkins.yaml) and put the `roleId` resp. `secretId` in `CASC_VAULT_APPROLE` resp. `CASC_VAULT_APPROLE_SECRET`.
 
 ### For production
 

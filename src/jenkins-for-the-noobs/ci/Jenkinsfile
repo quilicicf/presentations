@@ -1,0 +1,60 @@
+/**
+ * CONSTANTS
+ */
+final String BASE_PATH = 'src/jenkins-for-the-noobs'
+final String CI_PATH = "${BASE_PATH}/ci"
+
+final String ENV_JENKINS_LOGIN = 'JENKINS_LOGIN'
+final String ENV_JENKINS_TOKEN = 'JENKINS_TOKEN'
+final def JENKINS_TOKEN = usernamePassword(
+  credentialsId: 'jenkins-token',
+  usernameVariable: ENV_JENKINS_LOGIN,
+  passwordVariable: ENV_JENKINS_TOKEN
+)
+
+pipeline {
+  agent {
+    docker {
+      image 'my-builder:latest'
+    }
+  }
+
+  stages {
+    stage('Install tools') {
+      steps {
+        sh """\
+          bash '${CI_PATH}/install-tools.sh'
+        """.stripIndent()
+      }
+    }
+
+    stage('Update plugin versions') {
+      steps {
+        script {
+          final String GROOVY_SCRIPT_PATH = "${CI_PATH}/pluginEnumerator.groovy"
+          withCredentials([JENKINS_TOKEN]) {
+            sh """\
+              deno run \\
+                --allow-net='${env.JENKINS_URL}' \\
+                --allow-read='${GROOVY_SCRIPT_PATH}' \\
+                --allow-env='${ENV_JENKINS_LOGIN},${ENV_JENKINS_TOKEN}' \\
+                '${CI_PATH}/update-plugin-versions.ts' \\
+                '${env.JENKINS_URL}' \\
+                '${GROOVY_SCRIPT_PATH}' \\
+                '${ENV_JENKINS_LOGIN}' \\
+                '${ENV_JENKINS_TOKEN}'
+            """.stripIndent()
+          }
+        }
+      }
+    }
+
+    stage('Build') {
+      steps {
+        sh """\
+          deno '${CI_PATH}/build.ts'
+        """.stripIndent()
+      }
+    }
+  }
+}

@@ -2,6 +2,8 @@ jenkins:
   globalNodeProperties:
     - envVars:
         env:
+          - key: 'JENKINS_URL' # Host to this Jenkins instance
+            value: 'http://localhost:8201/jenkins'
           - key: 'DOCKER_REGISTRY_HOST' # Host to my org's private docker registry
             value: 'docker-registry.myorg.com'
           - key: 'NEXUS_URL' # URL to my org's private Nexus

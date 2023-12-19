@@ -1,0 +1,2 @@
+# Pass credentials to Vault test instance without committing them
+.env

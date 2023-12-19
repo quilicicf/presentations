@@ -3,8 +3,8 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
-          <entry key="CASC_VAULT_APPROLE" value="62fab527-0164-1f92-bb47-5ff3e2fb4c81" />
-          <entry key="CASC_VAULT_APPROLE_SECRET" value="56fcafcd-6acb-3a33-78fa-6b2d093b2c12" />
+          <entry key="CASC_VAULT_APPROLE" value="ca71432d-a9b7-48f3-99be-6001305ec376" />
+          <entry key="CASC_VAULT_APPROLE_SECRET" value="eb11a825-27ec-4b9e-b5e2-aa8f01ac0577" />
           <entry key="CASC_VAULT_ENGINE_VERSION" value="2" />
           <entry key="CASC_VAULT_PATHS" value="secret/myteam/jenkins,secret/myteam/approle" />
           <entry key="CASC_VAULT_URL" value="http://localhost:8200" />

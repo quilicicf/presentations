@@ -1,9 +1,10 @@
 unclassified:
-  githubpluginconfig:
-    configs:
-      - credentialsId: 'github-webhook-credentials'
-        manageHooks: true
-        name: 'github'
+#  NOTE: commented out to avoid errors in the console in test instance
+#  githubpluginconfig:
+#    configs:
+#      - credentialsId: 'github-webhook-credentials'
+#        manageHooks: true
+#        name: 'github'
 
   scmGit:
     globalConfigName: 'ci-user'

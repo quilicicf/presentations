@@ -1,6 +1,14 @@
+import com.cloudbees.plugins.credentials.Credentials
+import com.cloudbees.plugins.credentials.CredentialsProvider
+import com.cloudbees.plugins.credentials.common.UsernamePasswordCredentials
+import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl
+import hudson.security.AuthorizationStrategy
+import hudson.security.SecurityRealm
 import io.jenkins.plugins.casc.ConfigurationAsCode
 import javaposse.jobdsl.dsl.DslScriptLoader
 import javaposse.jobdsl.plugin.JenkinsJobManagement
+import org.jenkinsci.plugins.GithubAuthorizationStrategy
+import org.jenkinsci.plugins.GithubSecurityRealm
 import org.junit.ClassRule
 import org.junit.jupiter.api.Timeout
 import org.jvnet.hudson.test.JenkinsRule
@@ -19,6 +27,8 @@ import static java.nio.charset.StandardCharsets.UTF_8
 
 class TestInstance extends Specification {
 
+  private final static String ADMIN_USER = System.getenv("ADMIN_USER") ?: 'quilicicf'
+
   /**
    * Sets Jenkins instance port, see how localPort is set in {@link JenkinsRule}
    */
@@ -33,10 +43,30 @@ class TestInstance extends Specification {
   /** Only run with run configuration TEST_INSTANCE, not with gradle test */
   @IgnoreIf({ System.getenv('CASC_VAULT_URL') == null })
   void test () {
-    given:
-    final def jobManagement = new JenkinsJobManagement(System.out, [:], new File('.'))
-
     when:
+    cascConfiguration()
+    jobDslConfiguration()
+    authenticationConfiguration()
+    authorizationConfiguration(ADMIN_USER)
+
+    println '===================================='
+    println 'INSTANCE READY TO BE INTERACTED WITH'
+    Thread.currentThread().join() // Stop current thread to keep Jenkins instance alive while playing with it
+
+    then:
+    noExceptionThrown()
+  }
+
+  void cascConfiguration () {
+    loadConfigFiles()
+      .forEach {
+        println "Loading configuration file ${it.displayName}:"
+        ConfigurationAsCode.get().configure(it.fullPath)
+      }
+  }
+
+  void jobDslConfiguration () {
+    final def jobManagement = new JenkinsJobManagement(System.out, [:], new File('.'))
     loadJobDslFiles()
       .forEach {
         final Path file = Paths.get(it.fullPath)
@@ -45,18 +75,61 @@ class TestInstance extends Specification {
         new DslScriptLoader(jobManagement)
           .runScript(dslScript)
       }
+  }
 
-    loadConfigFiles()
-      .forEach {
-        println "Loading configuration file ${it.displayName}:"
-        ConfigurationAsCode.get().configure(it.fullPath)
-      }
+  /**
+   * Instructions come from the <a href="https://plugins.jenkins.io/github-oauth">plugin page</a>.
+   */
+  void authenticationConfiguration () {
+    final String githubWebUri = 'https://github.com'
+    final String githubApiUri = 'https://api.github.com'
+    final String oauthScopes = 'read:org,user:email'
 
-    println '===================================='
-    println 'INSTANCE READY TO BE INTERACTED WITH'
-    Thread.currentThread().join() // Stop current thread to keep Jenkins instance alive while playing with it
+    final UsernamePasswordCredentialsImpl credential = CredentialsProvider
+      .lookupCredentials(Credentials.class, jenkinsRule.instance, null, null)
+      .findAll { it instanceof UsernamePasswordCredentials }
+      .collect { (UsernamePasswordCredentialsImpl) it }
+      .find { it.getId() == 'github-authentication-app' }
 
-    then:
-    noExceptionThrown()
+    final SecurityRealm githubRealm = new GithubSecurityRealm(
+      githubWebUri, githubApiUri,
+      credential.username, credential.password.getPlainText(),
+      oauthScopes
+    )
+    if (githubRealm != jenkinsRule.instance.getSecurityRealm()) {
+      jenkinsRule.instance.setSecurityRealm(githubRealm)
+      jenkinsRule.instance.save()
+    }
+  }
+
+  /**
+   * Instructions come from the <a href="https://plugins.jenkins.io/github-oauth">plugin page</a>.
+   */
+  void authorizationConfiguration (final String adminUserNames) {
+    final String organizationNames = ''
+    final boolean useRepositoryPermissions = true
+    final boolean authenticatedUserReadPermission = false
+    final boolean authenticatedUserCreateJobPermission = false
+    final boolean allowGithubWebHookPermission = false
+    final boolean allowCcTrayPermission = false
+    final boolean allowAnonymousReadPermission = false
+    final boolean allowAnonymousJobStatusPermission = false
+
+    final AuthorizationStrategy github_authorization = new GithubAuthorizationStrategy(
+      adminUserNames,
+      authenticatedUserReadPermission,
+      useRepositoryPermissions,
+      authenticatedUserCreateJobPermission,
+      organizationNames,
+      allowGithubWebHookPermission,
+      allowCcTrayPermission,
+      allowAnonymousReadPermission,
+      allowAnonymousJobStatusPermission
+    )
+
+    if (github_authorization != jenkinsRule.instance.getAuthorizationStrategy()) {
+      jenkinsRule.instance.setAuthorizationStrategy(github_authorization)
+      jenkinsRule.instance.save()
+    }
   }
 }
