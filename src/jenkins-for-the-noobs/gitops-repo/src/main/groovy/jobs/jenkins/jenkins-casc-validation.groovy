@@ -48,7 +48,7 @@ multibranchPipelineJob('jenkins/validate') {
   }
   factory {
     workflowBranchProjectFactory {
-      scriptPath 'src/jenkins-for-the-noobs/gitops-repo/Jenkinsfile'
+      scriptPath 'src/jenkins-for-the-noobs/ci/Jenkinsfile'
     }
   }
   orphanedItemStrategy {
