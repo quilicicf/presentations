@@ -32,7 +32,10 @@ class TestInstance extends Specification {
   /**
    * Sets Jenkins instance port, see how localPort is set in {@link JenkinsRule}
    */
-  static { System.setProperty('port', '8201') }
+  static {
+    System.setProperty('port', '8201')
+    System.setProperty('org.jenkinsci.plugins.durabletask.BourneShellScript.LAUNCH_DIAGNOSTICS', 'true')
+  }
 
   @Shared
   @ClassRule
