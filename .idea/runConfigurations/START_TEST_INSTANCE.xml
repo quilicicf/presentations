@@ -24,7 +24,7 @@
           <option value="&quot;TestInstance&quot;" />
         </list>
       </option>
-      <option name="vmOptions" value="--add-opens java.base/java.lang=ALL-UNNAMED" />
+      <option name="vmOptions" value="" />
     </ExternalSystemSettings>
     <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
     <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>

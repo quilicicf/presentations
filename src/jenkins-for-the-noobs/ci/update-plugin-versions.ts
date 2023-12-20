@@ -13,6 +13,7 @@ async function main () {
 
   const groovyScript = await Deno.readTextFile(groovyScriptPath);
   const response = await fetch(`${jenkinsURL}/scriptText`, {
+    method: 'POST',
     headers: { Authorization: `Basic ${btoa(`${jenkinsLogin}:${jenkinsToken}`)}` },
     body: new URLSearchParams({ script: groovyScript }),
   });

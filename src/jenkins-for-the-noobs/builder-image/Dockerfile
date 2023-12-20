@@ -1,7 +1,10 @@
-FROM bash:5.2.21
+FROM rockylinux:9.3
 
-# Install git
-RUN set -euxo pipefail && apk add --no-cache git
+# Install OS packages
+RUN set -eux \
+  && dnf -y update-minimal --security --sec-severity=Important --sec-severity=Critical \
+  && dnf install --assumeyes git unzip \
+  && dnf clean all
 
 # Create non-root user $JENKINS_USER that matches the user in Jenkins instances.
 # By default, Jenkins user has id 1000.
@@ -9,32 +12,34 @@ ENV JENKINS_UID='1000'
 ENV JENKINS_USER='jenkins'
 ENV JENKINS_USERGROUP="${JENKINS_USER}"
 ENV HOME="/home/${JENKINS_USER}"
-RUN set -x \
-  && addgroup --system "${JENKINS_USERGROUP}" --gid "${JENKINS_UID}" \
-  && adduser "${JENKINS_USER}" \
+RUN set -eux \
+  && groupadd --system "${JENKINS_USERGROUP}" --gid "${JENKINS_UID}" \
+  && useradd "${JENKINS_USER}" \
     --system \
-    --gecos 'Jenkins user' \
+    --create-home \
+    --no-log-init \
     --uid "${JENKINS_UID}" \
-    --ingroup "${JENKINS_USERGROUP}" \
-    --home "${HOME}" \
-    --shell /bin/bash \
+    --gid "${JENKINS_USERGROUP}" \
+    --home-dir "${HOME}" \
+    --shell /sbin/nologin \
   && chmod 755 "${HOME}"
 
 USER "${JENKINS_UID}"
 
 # Install asdf and plugins
-RUN set -euxo pipefail \
-  && git clone 'https://github.com/asdf-vm/asdf.git' "${HOME}/.asdf" \
-  && export ASDF_DIR="${HOME}/.asdf" \
-  && source "${HOME}/.asdf/asdf.sh" \
+ENV ASDF_DIR="${HOME}/.asdf"
+RUN set -eux \
+  && git clone 'https://github.com/asdf-vm/asdf.git' "${ASDF_DIR}" \
+  && source "${ASDF_DIR}/asdf.sh" \
   \
   && asdf plugin add 'deno' \
   && asdf plugin add 'java' \
   && asdf plugin add 'gradle' \
+  && asdf plugin add 'groovy' \
   \
   && printf 'Load asdf and its completions when running interactive scripts\n' \
-  && printf '\n# Link ASDF\n. "%s"\n' "${HOME}/.asdf/asdf.sh" >> "${HOME}/.bashrc" \
-  && printf '\n# Add ASDF auto-completion\n. "%s"\n' "${HOME}/.asdf/completions/asdf.bash" >> "${HOME}/.bashrc"
+  && printf '\n# Link ASDF\n. "%s"\n' "${ASDF_DIR}/asdf.sh" >> "${HOME}/.bashrc" \
+  && printf '\n# Add ASDF auto-completion\n. "%s"\n' "${ASDF_DIR}/completions/asdf.bash" >> "${HOME}/.bashrc"
 
 # Load asdf when running non-interactive scripts
 COPY --chown=${JENKINS_UID}:${JENKINS_USERGROUP} 'bashenv.sh' "${HOME}/bashenv.sh"

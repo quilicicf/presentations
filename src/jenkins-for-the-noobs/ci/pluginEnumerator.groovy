@@ -1,7 +1,9 @@
 import groovy.json.JsonBuilder
+import jenkins.model.Jenkins
 
-final String JENKINS_HOME = System.getenv("JENKINS_HOME")
-final String JENKINS_VERSION = jenkins.model.Jenkins.getInstance().getVersion()
+final Jenkins INSTANCE = Jenkins.getInstance()
+final String PLUGINS_ROOT = INSTANCE.getPluginManager().rootDir
+final String JENKINS_VERSION = INSTANCE.getVersion()
 
 /**
  * Extract lines that contain a certain prefix from a Jenkins manifest file
@@ -25,7 +27,7 @@ class PluginMetadata {
 
 //noinspection GrDeprecatedAPIUsage for FileNameFinder. Couldn't find the right way to do this, change welcome.
 final Map<String, String> installedPlugins = new FileNameFinder()
-  .getFileNames("${JENKINS_HOME}/plugins", "**/META-INF/MANIFEST.MF")
+  .getFileNames(PLUGINS_ROOT, "**/META-INF/MANIFEST.MF")
   .collect { manifestPath ->
     final List<String> manifestLines = new File(manifestPath).readLines()
     final String groupId = extractFromManifest(manifestLines, "Group-Id: ")

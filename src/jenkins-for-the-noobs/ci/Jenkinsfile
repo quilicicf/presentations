@@ -14,10 +14,7 @@ final def JENKINS_TOKEN = usernamePassword(
 
 pipeline {
   agent {
-    docker {
-      image 'my-builder:latest'
-      args '-u root' // FIXME: BAAAAAD, but couldn't find how to run my job as another user
-    }
+    docker { image 'my-builder:latest' }
   }
 
   stages {

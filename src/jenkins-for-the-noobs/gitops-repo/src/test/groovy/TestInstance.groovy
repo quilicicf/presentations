@@ -1,12 +1,15 @@
-import com.cloudbees.plugins.credentials.Credentials
-import com.cloudbees.plugins.credentials.CredentialsProvider
+import com.cloudbees.plugins.credentials.SystemCredentialsProvider
 import com.cloudbees.plugins.credentials.common.UsernamePasswordCredentials
+import com.cloudbees.plugins.credentials.domains.Domain
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl
+import hudson.model.User
 import hudson.security.AuthorizationStrategy
 import hudson.security.SecurityRealm
 import io.jenkins.plugins.casc.ConfigurationAsCode
 import javaposse.jobdsl.dsl.DslScriptLoader
 import javaposse.jobdsl.plugin.JenkinsJobManagement
+import jenkins.security.ApiTokenProperty
+import jenkins.security.apitoken.TokenUuidAndPlainValue
 import org.jenkinsci.plugins.GithubAuthorizationStrategy
 import org.jenkinsci.plugins.GithubSecurityRealm
 import org.junit.ClassRule
@@ -23,7 +26,9 @@ import java.util.concurrent.TimeUnit
 
 import static ConfigScriptsSpec.loadConfigFiles
 import static JobScriptsSpec.loadJobDslFiles
+import static com.cloudbees.plugins.credentials.CredentialsProvider.lookupCredentialsInItemGroup
 import static java.nio.charset.StandardCharsets.UTF_8
+import static java.util.Collections.emptyMap
 
 class TestInstance extends Specification {
 
@@ -34,7 +39,12 @@ class TestInstance extends Specification {
    */
   static {
     System.setProperty('port', '8201')
-    System.setProperty('org.jenkinsci.plugins.durabletask.BourneShellScript.LAUNCH_DIAGNOSTICS', 'true')
+    final String jenkinsFolder = Paths.get(System.getenv('HOME'))
+      .resolve('.jenkins_home')
+      .toAbsolutePath()
+      .toString()
+    println "Setting Jenkins folder to ${jenkinsFolder}"
+    System.setProperty('java.io.tmpdir', jenkinsFolder)
   }
 
   @Shared
@@ -51,6 +61,7 @@ class TestInstance extends Specification {
     jobDslConfiguration()
     authenticationConfiguration()
     authorizationConfiguration(ADMIN_USER)
+    createUserToken(ADMIN_USER)
 
     println '===================================='
     println 'INSTANCE READY TO BE INTERACTED WITH'
@@ -88,9 +99,7 @@ class TestInstance extends Specification {
     final String githubApiUri = 'https://api.github.com'
     final String oauthScopes = 'read:org,user:email'
 
-    final UsernamePasswordCredentialsImpl credential = CredentialsProvider
-      .lookupCredentials(Credentials.class, jenkinsRule.instance, null, null)
-      .findAll { it instanceof UsernamePasswordCredentials }
+    final UsernamePasswordCredentials credential = lookupCredentialsInItemGroup(UsernamePasswordCredentials.class, jenkinsRule.jenkins, null)
       .collect { (UsernamePasswordCredentialsImpl) it }
       .find { it.getId() == 'github-authentication-app' }
 
@@ -134,5 +143,23 @@ class TestInstance extends Specification {
       jenkinsRule.instance.setAuthorizationStrategy(github_authorization)
       jenkinsRule.instance.save()
     }
+  }
+
+  void createUserToken (final String userName) {
+    final User user = User.get(userName, true, emptyMap())
+    final ApiTokenProperty apiTokenProperty = user.getProperty(ApiTokenProperty.class)
+    final TokenUuidAndPlainValue result = apiTokenProperty.tokenStore.generateNewToken('TEST')
+    user.save()
+
+    final UsernamePasswordCredentialsImpl jenkinsCredentials = lookupCredentialsInItemGroup(UsernamePasswordCredentialsImpl.class, jenkinsRule.jenkins, null)
+      .find { it.id == 'jenkins-token' }
+
+    final UsernamePasswordCredentials updatedCredentials = new UsernamePasswordCredentialsImpl(
+      jenkinsCredentials.scope, jenkinsCredentials.id, jenkinsCredentials.description, userName, result.plainValue
+    )
+
+    SystemCredentialsProvider.instance
+      .getStore()
+      .updateCredentials(Domain.global(), jenkinsCredentials, updatedCredentials)
   }
 }
