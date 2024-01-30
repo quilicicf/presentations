@@ -22,7 +22,6 @@ class ConfigScriptsSpec extends Specification {
     //noinspection GrDeprecatedAPIUsage
     return new FileNameFinder()
       .getFileNames(BASE_DIR, "**/*.yaml")
-      .findAll { !it.contains('global-environment') } // TODO: broken for no apparent reason
       .sort { a, b -> a.split('/').length <=> b.split('/').length }
       .collect { new ScriptFile(it, BASE_DIR) }
   }

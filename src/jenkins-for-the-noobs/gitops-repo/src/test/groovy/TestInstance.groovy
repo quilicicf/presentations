@@ -13,8 +13,8 @@ import jenkins.security.apitoken.TokenUuidAndPlainValue
 import org.jenkinsci.plugins.GithubAuthorizationStrategy
 import org.jenkinsci.plugins.GithubSecurityRealm
 import org.junit.ClassRule
-import org.junit.jupiter.api.Timeout
 import org.jvnet.hudson.test.JenkinsRule
+import org.jvnet.hudson.test.recipes.WithTimeout
 import spock.lang.IgnoreIf
 import spock.lang.Shared
 import spock.lang.Specification
@@ -22,7 +22,6 @@ import spock.lang.Specification
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.concurrent.TimeUnit
 
 import static ConfigScriptsSpec.loadConfigFiles
 import static JobScriptsSpec.loadJobDslFiles
@@ -32,27 +31,39 @@ import static java.util.Collections.emptyMap
 
 class TestInstance extends Specification {
 
-  private final static String ADMIN_USER = System.getenv("ADMIN_USER") ?: 'quilicicf'
+  private static final String JENKINS_PORT = '8201'
+  private static final String ADMIN_USER = System.getenv("ADMIN_USER") ?: 'quilicicf'
 
-  /**
-   * Sets Jenkins instance port, see how localPort is set in {@link JenkinsRule}
-   */
+  /** Sets Jenkins instance port, see how localPort is set in {@link JenkinsRule} */
   static {
-    System.setProperty('port', '8201')
+    println "Jenkins will start on: http://localhost:${JENKINS_PORT}/jenkins"
+    System.setProperty('port', JENKINS_PORT)
+  }
+
+  /** Add debugging logs for Docker agents */
+  static {
+    System.setProperty('org.jenkinsci.plugins.durabletask.BourneShellScript.LAUNCH_DIAGNOSTICS', 'true')
+  }
+
+  /** Change Jenkins folder for permissions issues */
+  // FIXME: check this fix, doesn't seem to work well
+  static {
     final String jenkinsFolder = Paths.get(System.getenv('HOME'))
       .resolve('.jenkins_home')
       .toAbsolutePath()
       .toString()
     println "Setting Jenkins folder to ${jenkinsFolder}"
     System.setProperty('java.io.tmpdir', jenkinsFolder)
+
+    println "CASC_VAULT_URL=${System.getenv('CASC_VAULT_URL')}"
   }
 
   @Shared
   @ClassRule
   JenkinsRule jenkinsRule = new JenkinsRule()
 
-  /** Keep server open for a long time, default timeout is 180s, which is too low to present the slides */
-  @Timeout(value = 1L, unit = TimeUnit.DAYS)
+  /** Keep server open for infinity and beyond. Default timeout is 180s, which is too low to present the slides */
+  @WithTimeout(0)
   /** Only run with run configuration TEST_INSTANCE, not with gradle test */
   @IgnoreIf({ System.getenv('CASC_VAULT_URL') == null })
   void test () {

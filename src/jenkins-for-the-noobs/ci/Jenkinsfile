@@ -14,7 +14,10 @@ final def JENKINS_TOKEN = usernamePassword(
 
 pipeline {
   agent {
-    docker { image 'my-builder:latest' }
+    docker {
+      image 'my-builder:latest'
+      args '--network host'
+    }
   }
 
   stages {
@@ -32,8 +35,9 @@ pipeline {
           final String GROOVY_SCRIPT_PATH = "${CI_PATH}/pluginEnumerator.groovy"
           withCredentials([JENKINS_TOKEN]) {
             sh """\
+              set -x
               deno run \\
-                --allow-net='${env.JENKINS_URL}' \\
+                --allow-net='${env.JENKINS_DOMAIN}' \\
                 --allow-read='${GROOVY_SCRIPT_PATH}' \\
                 --allow-env='${ENV_JENKINS_LOGIN},${ENV_JENKINS_TOKEN}' \\
                 '${CI_PATH}/update-plugin-versions.ts' \\
@@ -50,7 +54,8 @@ pipeline {
     stage('Build') {
       steps {
         sh """\
-          deno '${CI_PATH}/build.ts'
+          echo TODO
+          #deno run '${CI_PATH}/build.ts'
         """.stripIndent()
       }
     }

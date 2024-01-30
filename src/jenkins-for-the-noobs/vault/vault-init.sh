@@ -33,7 +33,6 @@ vault write 'auth/approle/role/jenkins/custom-secret-id' \
 
 # Create secrets
 # See: https://developer.hashicorp.com/vault/tutorials/getting-started/getting-started-first-secret
-printf 'Token: %s\n' "${GITHUB_PASSWORD:-ghp_dummy}"
 vault kv put \
   -mount=secret \
   myteam/jenkins \

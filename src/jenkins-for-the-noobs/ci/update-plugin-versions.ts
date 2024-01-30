@@ -17,6 +17,8 @@ async function main () {
     headers: { Authorization: `Basic ${btoa(`${jenkinsLogin}:${jenkinsToken}`)}` },
     body: new URLSearchParams({ script: groovyScript }),
   });
+
+  console.log(await response.json());
 }
 
 main()

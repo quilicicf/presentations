@@ -112,8 +112,16 @@ tasks.register('resolveTestPlugins', Copy) {
 }
 
 test {
-  jvmArgs '--add-opens=java.base/java.util=ALL-UNNAMED'
+  jvmArgs([
+    '--add-opens=java.base/java.util=ALL-UNNAMED',
+    '--add-opens=java.base/java.lang=ALL-UNNAMED'
+  ])
   dependsOn tasks.resolveTestPlugins // When the instance is ready
   inputs.files sourceSets.jobs.groovy.srcDirs // Read the Job DSL files from the jobs folder defined in sourceSets
   systemProperty 'buildDirectory', project.buildDir.absolutePath // Set build directory for Jenkins test harness, JENKINS-26331
+
+  testLogging {
+    outputs.upToDateWhen { false }
+    showStandardStreams = true
+  }
 }
