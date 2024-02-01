@@ -29,11 +29,15 @@ pipeline {
   }
 
   stages {
-    stage('Install tools') {
+    stage('Prepare buid') {
       steps {
-        sh """\
-          bash '${CI_PATH}/install-tools.sh'
-        """.stripIndent()
+        script {
+          currentBuild.displayName = "#${env.BUILD_NUMBER} on ${env.GIT_COMMIT.take(7)}"
+
+          sh """\
+            bash '${CI_PATH}/install-tools.sh'
+          """.stripIndent()
+        }
       }
     }
 
