@@ -54,8 +54,7 @@ pipeline {
     stage('Build') {
       steps {
         sh """\
-          echo TODO
-          #deno run '${CI_PATH}/build.ts'
+          bash '${CI_PATH}/build.sh'
         """.stripIndent()
       }
     }
