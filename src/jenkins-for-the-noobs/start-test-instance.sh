@@ -8,9 +8,11 @@ export DEFAULT='\e[0m'
 export DIR
 DIR="$(cd "$( dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+trap cleanup EXIT
+
 main() (
-#  buildBuilderImage
-#  startVaultInstance
+  buildBuilderImage
+  startVaultInstance
   startTestInstance
 )
 
@@ -37,6 +39,11 @@ startTestInstance() (
   export CASC_VAULT_PATHS='secret/myteam/jenkins,secret/myteam/approle'
   export CASC_VAULT_URL='http://localhost:8200'
   gradle :test --tests "TestInstance"
+)
+
+cleanup() (
+  cd "${DIR}/vault"
+  docker compose down
 )
 
 main "$@"
