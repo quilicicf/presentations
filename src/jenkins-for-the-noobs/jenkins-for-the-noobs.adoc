@@ -8,7 +8,7 @@
 :a2r-theme-name: light-and-dark-auto
 :a2r-svg-icons-dir: assets/svg-icons
 
-= image:jenkins-ninja.webp[Jenkins ninja] Jenkins for the noobs
+= image:jenkins-ninja.webp[Jenkins ninja,120,150] Jenkins for the noobs
 
 [.subtitle]#Acquire full autonomy on Casc-via-Flux Jenkins instances#
 
@@ -38,9 +38,9 @@ There might be *approximations* but *everything's been tested* before making it 
 
 === Reminder about CI
 
-* Purpose: integrate devs in main branch
-* Acceptance criteria: fast & reliable
-* How to detect bad CI: toil & doubts
+* *Purpose:* integrate devs in main branch
+* *Acceptance criteria:* fast & reliable
+* *How to detect bad CI:* toil & doubts
 
 [.notes]
 ====
@@ -194,7 +194,7 @@ You can *explore in the UI*, but you need to *replicate* the changes in the *Cas
 
 == The global configuration
 
-image::global_configuration_screen.avif[Global configuration screen,1500,940]
+image::global_configuration_screen.avif[Global configuration screen,1452,724]
 
 [.notes]
 ====
@@ -380,7 +380,7 @@ Example: link:https://github.com/orgs/MyOrg/teams/my-team[] gives `MyOrg*my-team
 
 [.column-9x.fragment]
 =====
-image::permissions.avif[Permissions,1200,700]
+image::permissions.avif[Permissions,1348,776]
 =====
 ====
 
@@ -510,8 +510,8 @@ You can do it manually by either re-starting the Jenkins instance or reloading t
 
 [.jobs-configuration-images]
 ====
-image::jobs_configuration_folder_screen.avif[Folders,1545,475]
-image::jobs_configuration_job_screen.avif[Jobs,1634,1049]
+image::jobs_configuration_folder_screen.avif[Folders,1245,460]
+image::jobs_configuration_job_screen.avif[Jobs,1246,514]
 ====
 
 === Job DSL
@@ -613,7 +613,7 @@ You should validate your Job DSL before pushing it to the instance, in case you 
 
 == Pipelines configuration
 
-image::jenkinsfile_configuration_screen.avif[Pipeline screen,1830,856]
+image::jenkinsfile_configuration_screen.avif[Pipeline screen,1292,777]
 
 === Pipeline plugins
 
@@ -1152,13 +1152,13 @@ Restart Jenkins (to get start logs for example)
 
 Open [.small]`+https://${JENKINS_DOMAIN}/safeRestart+`
 
-image::restart.avif[Restart Jenkins,1033,473]
+image::restart.avif[Restart Jenkins,952,474]
 
 === Replay
 
 Replay a job with edited Jenkinsfile
 
-image::replay_jenkinsfile.avif[Replay menu option,1022,655]
+image::replay_jenkinsfile.avif[Replay menu option,1233,661]
 
 == Conclusion
 
