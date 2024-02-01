@@ -3,6 +3,7 @@
  */
 final String BASE_PATH = 'src/jenkins-for-the-noobs'
 final String CI_PATH = "${BASE_PATH}/ci"
+final String GITOPS_PATH = "${BASE_PATH}/gitops-repo"
 
 final String ENV_JENKINS_LOGIN = 'JENKINS_LOGIN'
 final String ENV_JENKINS_TOKEN = 'JENKINS_TOKEN'
@@ -16,7 +17,14 @@ pipeline {
   agent {
     docker {
       image 'my-builder:latest'
-      args '--network host'
+      //noinspection GroovyAssignabilityCheck
+      args(
+        [
+          '--network host',
+          '--volume /home/cquilici/.jenkins_cache/asdf:/home/jenkins/.asdf/installs',
+          '--volume /home/cquilici/.jenkins_cache/gradle:/home/jenkins/.gradle'
+        ].join(' ')
+      )
     }
   }
 
@@ -56,6 +64,16 @@ pipeline {
         sh """\
           bash '${CI_PATH}/build.sh'
         """.stripIndent()
+      }
+    }
+  }
+
+  post {
+    always {
+      script {
+        archiveArtifacts(
+          artifacts: "${GITOPS_PATH}/build/reports/tests/test/*,${GITOPS_PATH}/build/reports/tests/test/**/*"
+        )
       }
     }
   }

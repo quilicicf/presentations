@@ -19,9 +19,7 @@ main() (
 buildBuilderImage () (
   printf '%bBuilding builder image%b\n' "${CYAN}" "${DEFAULT}"
   cd "${DIR}/builder-image"
-  docker build . \
-     --build-arg "USER=$(whoami)" \
-     --tag 'my-builder:latest'
+  docker build --tag 'my-builder:latest' .
 )
 
 startVaultInstance() (

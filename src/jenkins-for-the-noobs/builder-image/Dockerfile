@@ -1,17 +1,15 @@
 FROM rockylinux:9.3
 
-ARG USER
-
 # Install OS packages
 RUN set -eux \
   && dnf -y update-minimal --security --sec-severity=Important --sec-severity=Critical \
-  && dnf install --assumeyes git unzip \
+  && dnf install --assumeyes git unzip which \
   && dnf clean all
 
 # Create non-root user $JENKINS_USER that matches the user in Jenkins instances.
 # By default, Jenkins user has id 1000.
 ENV JENKINS_UID='1000'
-ENV JENKINS_USER="${USER}"
+ENV JENKINS_USER='jenkins'
 ENV JENKINS_USERGROUP="${JENKINS_USER}"
 ENV HOME="/home/${JENKINS_USER}"
 RUN set -eux \
