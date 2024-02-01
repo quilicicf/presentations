@@ -13,6 +13,7 @@ import jenkins.security.apitoken.TokenUuidAndPlainValue
 import org.jenkinsci.plugins.GithubAuthorizationStrategy
 import org.jenkinsci.plugins.GithubSecurityRealm
 import org.junit.ClassRule
+import org.junit.Rule
 import org.jvnet.hudson.test.JenkinsRule
 import org.jvnet.hudson.test.recipes.WithTimeout
 import spock.lang.IgnoreIf
@@ -26,6 +27,7 @@ import java.nio.file.Paths
 import static ConfigScriptsSpec.loadConfigFiles
 import static JobScriptsSpec.loadJobDslFiles
 import static com.cloudbees.plugins.credentials.CredentialsProvider.lookupCredentialsInItemGroup
+import static java.lang.Integer.MAX_VALUE
 import static java.nio.charset.StandardCharsets.UTF_8
 import static java.util.Collections.emptyMap
 
@@ -58,12 +60,11 @@ class TestInstance extends Specification {
     println "CASC_VAULT_URL=${System.getenv('CASC_VAULT_URL')}"
   }
 
-  @Shared
-  @ClassRule
+  @Rule
   JenkinsRule jenkinsRule = new JenkinsRule()
 
   /** Keep server open for infinity and beyond. Default timeout is 180s, which is too low to present the slides */
-  @WithTimeout(0)
+  @WithTimeout(MAX_VALUE)
   /** Only run with run configuration TEST_INSTANCE, not with gradle test */
   @IgnoreIf({ System.getenv('CASC_VAULT_URL') == null })
   void test () {
