@@ -2,6 +2,6 @@ appearance:
   simpleTheme:
     elements:
       - cssUrl:
-          url: 'https://jenkins-myteam.com/userContent/custom-style/index.css'
+          url: 'http://localhost:8201/jenkins/userContent/custom-style/index.css'
       - jsUrl:
-          url: 'https://jenkins-myteam.com/userContent/custom-style/index.js'
+          url: 'http://localhost:8201/jenkins/userContent/custom-style/index.js'
