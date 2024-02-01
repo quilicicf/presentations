@@ -11,9 +11,25 @@ DIR="$(cd "$( dirname "${BASH_SOURCE[0]}")" && pwd)"
 trap cleanup EXIT
 
 main() (
+  prepareCaches
   buildBuilderImage
   startVaultInstance
   startTestInstance
+)
+
+createFolderIfNotExists() (
+  folder="$1"
+  if ! test -d "${folder}"; then
+    mkdir "${folder}"
+    sudo chown --recursive "$(whoami):$(whoami)" "${folder}"
+  fi
+)
+
+prepareCaches() (
+  baseCacheFolder="${HOME}/.jenkins_cache"
+  createFolderIfNotExists "${baseCacheFolder}"
+  createFolderIfNotExists "${baseCacheFolder}/asdf"
+  createFolderIfNotExists "${baseCacheFolder}/gradle"
 )
 
 buildBuilderImage () (
