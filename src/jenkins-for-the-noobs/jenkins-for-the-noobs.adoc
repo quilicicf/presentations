@@ -1211,7 +1211,11 @@ The official documentation was broken, more info link:https://issues.jenkins.io/
 === Demo
 
 [.subtitle]
-A look into link:https://github.com/quilicicf/presentations/tree/master/src/jenkins-for-the-noobs/gitops-repo[the code].
+====
+link:https://github.com/quilicicf/presentations/tree/master/src/jenkins-for-the-noobs/gitops-repo[The code]
+
+link:http://localhost:8201/jenkins/job/jenkins/job/validate[The result]
+====
 
 [.notes]
 ====
