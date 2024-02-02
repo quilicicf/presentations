@@ -442,7 +442,7 @@ You can open the Vault-as-a-Service folders by pasting the part after `secret` i
 
 The `persistence` part mounts the K8s sealed secret that used to interact with Vault. You will never need to touch this part of the code, it's just for information.
 
-Check out the link:./gitops-repo/vault-integration/README.md[README] if you want to learn more about Vault integration.
+Check out the link:./vault/README.md[README] if you want to learn more about Vault integration.
 ====
 
 === Credentials
@@ -1144,6 +1144,87 @@ I'll dedicate a specific training to this if there's interest around it
 // TODO: add specific section
 ====
 
+[#casc-validation]
+== CasC validation
+
+=== Basic idea
+
+[.subtitle]
+Inspired by link:https://github.com/jenkinsci/job-dsl-plugin/wiki/Testing-DSL-Scripts[official documentation]
+
+* Create clone of Jenkins instance
+** Same version
+** Same plugins
+* Load configuration files
+* Watch for errors
+
+[.notes]
+====
+The official documentation was broken, more info link:https://issues.jenkins.io/browse/JENKINS-68216[here].
+====
+
+=== How it's done
+
+[.layout-columns]
+====
+[.column-6x]
+=====
+* Transform `gitops-repo` into a Gradle project
+* Put Job DSL & CasC files in `src/main`
+* Use Jenkins harness as test framework
+* Install Jenkins and plugins in test instance
+* Write test classes to load files
+* Generate K8s resources with a script
+=====
+
+[.column-6x.fragment]
+=====
+[source]
+----
+.
+├── build.gradle              # Project manifest
+├── generated                 # Generated K8s resources
+├── gradle.properties         # Project variables
+├── jenkins-pvc.yaml          # Jenkins controller PVC
+├── jenkins-vault-secret.yaml # Vault secret config map
+├── jenkins.yaml              # Jenkins Helm release
+├── pvc                       # Jenkins cache PVCs
+└── src
+    ├── main
+    │   ├── groovy
+    │   │   └── jobs          # Job DSL files
+    │   └── resources
+    │       ├── casc          # CasC files
+    │       └── jobDsl.gdsl   # Job DSL syntax file
+    └── test
+        └── groovy            # Unit tests
+----
+=====
+====
+
+=== Pros
+
+* Syntax coloration/completion
+* Local and/or CI validation
+
+=== Cons
+
+* Some added complexity
+
+=== Demo
+
+[.subtitle]
+A look into link:https://github.com/quilicicf/presentations/tree/master/src/jenkins-for-the-noobs/gitops-repo[the code].
+
+[.notes]
+====
+Show:
+
+* All Gradle files
+* The git commit hook
+* The CI job
+====
+
 == Tips & tricks
 
 === Restart Jenkins
@@ -1177,6 +1258,3 @@ image::replay_jenkinsfile.avif[Replay menu option,1233,661]
 === Q&A
 
 [.subtitle]#Ask me anything#
-
-[#casc-validation]
-=== CasC validation
