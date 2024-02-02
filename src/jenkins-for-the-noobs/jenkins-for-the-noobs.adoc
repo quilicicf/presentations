@@ -8,7 +8,7 @@
 :a2r-theme-name: light-and-dark-auto
 :a2r-svg-icons-dir: assets/svg-icons
 
-= image:jenkins-ninja.webp[Jenkins ninja,120,150] Jenkins for the noobs
+= image:jenkins-ninja.webp[Jenkins ninja,110,150] Jenkins for the noobs
 
 [.subtitle]#Acquire full autonomy on Casc-via-Helm-and-Flux Jenkins instances#
 
@@ -481,7 +481,7 @@ credentials:
               scope: 'GLOBAL'
               id: 'e2e-ssh-key'
               username: 'jenkins-e2e-ssh-key'
-              description: 'Private SSH key file to connect to the VM hosting the product during E2E tests'
+              description: 'Private SSH key to connect to the VM hosting the product during E2E tests'
               privateKeySource:
                 directEntry:
                   privateKey: ${e2e-ssh-key:-notSet}
