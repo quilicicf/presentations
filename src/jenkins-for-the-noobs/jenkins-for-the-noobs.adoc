@@ -10,7 +10,7 @@
 
 = image:jenkins-ninja.webp[Jenkins ninja,120,150] Jenkins for the noobs
 
-[.subtitle]#Acquire full autonomy on Casc-via-Flux Jenkins instances#
+[.subtitle]#Acquire full autonomy on Casc-via-Helm-and-Flux Jenkins instances#
 
 [.notes]
 ====
@@ -18,10 +18,7 @@
 
 *Targeted goal:* full autonomy to use Jenkins, near-full autonomy to administrate it (some scarce parts need operating team's intervention for security reasons).
 
-*How to run that presentation:* run the link:./gitops-repo/src/test/groovy/TestInstance.groovy[`TestInstance`] class with link:../../.idea/runConfigurations/TEST_INSTANCE.xml[the associated run configuration] so that dynamic links in the presentation work
-
-// TODO: Write full documentation for test instance run
-// TODO: either use CASC_VAULT_FILE in the run configuration to avoid putting credentials in the run config or change the README for Vault to use static credentials if possible
+*How to run that presentation:* run the link:https://github.com/quilicicf/presentations/blob/master/src/jenkins-for-the-noobs/gitops-repo/src/test/groovy/TestInstance.groovy[`TestInstance`] class with link:https://github.com/quilicicf/presentations/blob/master/src/jenkins-for-the-noobs/start-test-instance.sh[the associated script] so that dynamic links in the presentation work
 ====
 
 == Disclaimer
