@@ -1238,7 +1238,7 @@ The replay button doesn't allow updating the parts that are in the lib. Needs a 
 The shared lib is basically a new product, which comes with tooling, semver, changelogs etc... Breaking the job now propagates everywhere it's used.
 ====
 
-=== icon:recommended[] My approach - anatomy of lib
+=== icon:recommended[] Anatomy of lib
 
 * One global var per job type
 * One folder in `src` & `resources` per job type + `common`
@@ -1251,7 +1251,7 @@ The shared lib is basically a new product, which comes with tooling, semver, cha
 Rationale: one lib with multiple jobs types to share the common parts. Versioned separately because they do different things.
 ====
 
-=== icon:recommended[] My approach - anatomy of jobs
+=== icon:recommended[] Anatomy of jobs
 
 Global vars look like this:
 
@@ -1287,6 +1287,72 @@ build {
 [.notes]
 ====
 Adding a minor/patch version creates a new v5.X.Y tag and moves the v5 tag to that new release. This causes all jobs pulling v5 to run the new version.
+====
+
+=== icon:recommended[] Multi-file scripting
+
+* In global shared libs, Groovy can be used (emoji:warning[])
+* Otherwise, a good alternative is link:https://deno.com[Deno]
+* For non-Groovy scripting, load the shared lib resources
+
+[source,groovy,role="keep-markup fit-content"]
+----
+class SharedLibLoader {
+  public static final String RESOURCES_FOLDER = '.git/shared-lib-scripts'
+  private static final String RESOURCES_INDEX_FILE_PATH = 'index.json'
+  <div style="display:none">
+  /** We use base 64 for all files since some are binary files and get screwed with other encodings */
+  private static final String SAFE_ENCODING = 'Base64'
+  /**
+   * Retrieves the shared library resources index and from there, gets all the files from the
+   * common and requested folders and writes them in (git-ignored) folder
+   * {@link Utilities#RESOURCES_FOLDER} with pipeline step writeFile
+   * (which can only copy inside the workspace).
+   */
+  </div>
+  static void initializeSharedLibrary (final def mainScript, final String jobFolder, final String... otherFolders) {
+    mainScript.echo 'Initializing shared library'
+
+    final String indexAsString = mainScript.libraryResource(RESOURCES_INDEX_FILE_PATH)
+    final String indexPath = "${RESOURCES_FOLDER}/${RESOURCES_INDEX_FILE_PATH}"
+    mainScript.writeFile file: indexPath, text: indexAsString
+    final List<String> resources = (List<String>) mainScript.readJSON(file: indexPath)
+
+    final Set<String> folders = new HashSet<>()
+    folders.add('common')
+    folders.add(jobFolder)
+    otherFolders.each { folders.add(it) }
+    writeAllResourcesInTemporaryFolder(mainScript, resources, folders)
+  }
+  <div style="display:none">
+  private static Object writeAllResourcesInTemporaryFolder (final def mainScript, final List<String> resources, final Set<String> jobFolders) {
+    resources
+      .findAll { final String resource ->
+        jobFolders.any { resource.startsWith("${it}/") }
+      }
+      .each { final String resource ->
+        mainScript.echo "Retrieving resource file ${resource}"
+        final String resourceContent = mainScript.libraryResource resource: resource, encoding: SAFE_ENCODING
+        mainScript.writeFile(
+          file: "${RESOURCES_FOLDER}/${resource}",
+          text: resourceContent,
+          encoding: SAFE_ENCODING
+        )
+      }
+  }
+  </div>
+}
+----
+
+[.notes]
+====
+With Groovy, multi-file comes free of charge from the lib's `src` folder.
+
+⚠ The Groovy version in Jenkins is low (2.4.21 in Jenkins 2.426.3 at the time of writing while latest is 4.0.18 and 5 is in alpha).
+
+Otherwise, it's recommended to write all `resources` files in a single location, so they can link to one another.
+
+I asked about this, but link:https://issues.jenkins.io/browse/JENKINS-70194[the issue] was shut down rather abruptly.
 ====
 
 [#casc-validation]
