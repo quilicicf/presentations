@@ -12,12 +12,10 @@ import jenkins.security.ApiTokenProperty
 import jenkins.security.apitoken.TokenUuidAndPlainValue
 import org.jenkinsci.plugins.GithubAuthorizationStrategy
 import org.jenkinsci.plugins.GithubSecurityRealm
-import org.junit.ClassRule
 import org.junit.Rule
 import org.jvnet.hudson.test.JenkinsRule
 import org.jvnet.hudson.test.recipes.WithTimeout
 import spock.lang.IgnoreIf
-import spock.lang.Shared
 import spock.lang.Specification
 
 import java.nio.file.Files

@@ -1135,10 +1135,158 @@ If you pass the parameters within quotes (which I strongly recommend to avoid in
 [.notes]
 ====
 It is extremely easy to start using the shared libs, but there are significant tradeoffs
+====
 
-I'll dedicate a specific training to this if there's interest around it
+== Shared libs
 
-// TODO: add specific section
+=== What for
+
+link:https://www.jenkins.io/doc/book/pipeline/shared-libraries[Shared libs] centralize common patterns in Jenkinsfiles
+
+=== Anatomy of a shared lib
+
+Git repository with the following structure
+
+[source,role="keep-markup fit-content"]
+----
+.
+├── resources <span class="dim"># Static files that can be used in vars scripts</span>
+├── src       <span class="dim"># Groovy source files</span>
+│   └── common
+│       └── Semver.groovy
+└── vars      <span class="dim"># Groovy scripts that can be used in Jenkinsfiles</span>
+    └── myFunction.groovy
+----
+
+=== Usage - configure shared lib
+
+In Jenkins' configuration, set up your shared lib:
+
+[source,yaml,role="fit-content"]
+----
+unclassified:
+  globallibraries:
+    libraries:
+      - name: 'team-shared-lib'
+        defaultVersion: 'master'
+        implicit: false
+        includeInChangesets: true
+        allowVersionOverride: true
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: 'https://github.com/MyOrg/shared-lib.git'
+                credentialsId: 'github-credentials'
+----
+
+[.notes]
+====
+This gives the name `team-shared-lib` to the shared lib in repo `shared-lib` and specifies how it's pulled.
+
+Libraries can also be set up for a single folder. Global libs are trusted and run out of the sandbox, folder libs are not.
+
+Be wary of who can commit to the globally configured shared libs, they can basically gain God powers on the Jenkins instance.
+====
+
+=== Usage - use shared lib
+
+In app repository's Jenkinsfile:
+
+[source,groovy,role="fit-content"]
+----
+@Library('team-shared-lib@v5') _
+import common.Semver // The Semver class comes from src in the lib
+
+release { // The function release comes vars in the lib
+  tag = Semver.of(1, 12, 3)
+}
+----
+
+[.notes]
+====
+The lib import specifies the name of the configured lib and the tag to pull.
+====
+
+=== Pros
+
+* Faster delivery of improvements
+* Separation of configuration & logic
+* Easier discovery of team's practices
+* More easily enforce good practices
+
+[.notes]
+====
+Update the shared lib, push a new rolling tag, all jobs upgrade at once.
+
+The configuration in the Jenkinsfile, the logic in the shared lib. Makes differences between repositories stand out.
+
+If all jobs are put in shared lib, no archeology to find which jobs interact with what part of infra for example.
+
+One tooling set up in the shared lib to enforce build jobs changelogs for example.
+====
+
+=== Cons
+
+* Abstracts Jenkinsfiles, harder to validate
+* Requires more team discipline
+
+[.notes]
+====
+The replay button doesn't allow updating the parts that are in the lib. Needs a new branch *and* a replay.
+
+The shared lib is basically a new product, which comes with tooling, semver, changelogs etc... Breaking the job now propagates everywhere it's used.
+====
+
+=== icon:recommended[] My approach - anatomy of lib
+
+* One global var per job type
+* One folder in `src` & `resources` per job type + `common`
+* One tag prefix per job type + `common`
+* One changelog file per job type + `common`
+* Each release tagged with semver and major tags
+
+[.notes]
+====
+Rationale: one lib with multiple jobs types to share the common parts. Versioned separately because they do different things.
+====
+
+=== icon:recommended[] My approach - anatomy of jobs
+
+Global vars look like this:
+
+[source,groovy,role="fit-content"]
+----
+import jobType.PipelineConfiguration
+
+import static groovy.lang.Closure.DELEGATE_ONLY
+
+def call (final Closure bodyBuilder) {
+  final PipelineConfiguration configuration = new PipelineConfiguration()
+  bodyBuilder.resolveStrategy = DELEGATE_ONLY // Resolve fields on the delegate only
+  bodyBuilder.delegate = configuration // Set the delegate of the closure
+  bodyBuilder() // Execute the closure to hydrate the delegate
+
+  pipeline {
+    ...
+  }
+}
+----
+
+And are used like this:
+
+[source,groovy,role="fit-content"]
+----
+@Library('team-shared-lib@v5') _
+
+build {
+  field = 'value'
+}
+----
+
+[.notes]
+====
+Adding a minor/patch version creates a new v5.X.Y tag and moves the v5 tag to that new release. This causes all jobs pulling v5 to run the new version.
 ====
 
 [#casc-validation]
