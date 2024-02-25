@@ -1,0 +1,44 @@
+name: 'Push to gh-pages 🚀'
+on:
+  push:
+    branches:
+      - 'master'
+
+env:
+  A2R_VERSION: 1.0.1
+
+jobs:
+  push:
+    name: 'Push 🚀'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout ↓'
+        uses: 'actions/checkout@v4'
+
+      - name: 'Install Node.js ↓' # TODO: install via asdf to sync with .tool-versions
+        uses: 'actions/setup-node@v4'
+        with:
+          node-version: 20
+
+      - name: 'Cache npm dependencies 📦'
+        uses: 'actions/cache@v4'
+        with:
+          path: ~/.npm
+          key: ${{ env.A2R_VERSION }}
+
+      - name: 'Install a2r ↓'
+        run: |-
+          npm install --global "@quilicicf/asciidoc-2-reveal@${A2R_VERSION}"
+
+      - name: 'Run build 🏃'
+        run: |-
+          set -euxo pipefail
+          mkdir ./dist || true
+          node ./scripts/build.mjs
+
+      - name: 'Push to branch gh-pages 🚀'
+        uses: 'peaceiris/actions-gh-pages@v3'
+        with:
+          personal_token: ${{ secrets.PRESENTATIONS_TOKEN }}
+          publish_dir: ./dist # Build output to publish to the `gh-pages` branch
+          force_orphan: true # gh-pages branch only has a single commit with the latest changes
