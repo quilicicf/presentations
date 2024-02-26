@@ -1,0 +1,32 @@
+{
+  "imports": {
+    "fs/": "https://deno.land/std@0.217.0/fs/",
+    "path/": "https://deno.land/std@0.217.0/path/",
+    "collections/": "https://deno.land/std@0.217.0/collections/",
+    "yaml/": "https://deno.land/std@0.217.0/yaml/"
+  },
+  "lint": {
+    "files": {
+      "include": [
+        "src/",
+        "mod.ts"
+      ],
+      "exclude": [
+        "src/fiddle*.ts"
+      ]
+    },
+    "rules": {
+      "tags": [
+        "recommended"
+      ],
+      "include": [
+        "camelcase"
+      ],
+      "exclude": [
+        "require-await",
+        "no-inferrable-types",
+        "no-invalid-triple-slash-reference"
+      ]
+    }
+  }
+}

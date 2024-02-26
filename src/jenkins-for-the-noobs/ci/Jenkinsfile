@@ -63,6 +63,16 @@ pipeline {
       }
     }
 
+    stage('Check config maps') {
+      steps {
+        script {
+          sh """\
+            bash "${CI_PATH}/check-config-maps.sh"
+          """.stripIndent()
+        }
+      }
+    }
+
     stage('Build') {
       steps {
         sh """\
