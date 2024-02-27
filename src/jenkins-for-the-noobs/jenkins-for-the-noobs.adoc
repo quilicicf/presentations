@@ -1,6 +1,4 @@
 :imagesdir: assets
-:a2r-js: assets/deck.js
-:a2r-css: assets/deck.css
 :a2r-page-title: Jenkins for the noobs
 :a2r-favicon: assets/favicon.webp
 :a2r-fragment-lists: true

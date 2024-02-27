@@ -1,0 +1,669 @@
+:imagesdir: assets
+:a2r-page-title: Bash > /dev/null
+:a2r-favicon: assets/svg-icons/favicon.svg
+:a2r-fragment-lists: true
+:a2r-fragment-tables: true
+:a2r-theme-name: light-and-dark-auto
+:a2r-svg-icons-dir: assets/svg-icons
+:a2r-theme-color: [0.6,0.15,26]
+
+= icon:favicon[] > /dev/null
+
+[.subtitle]#All you need to be proficient at Bash scripting#
+
+[.notes]
+====
+*Intended audience:* newbies-to-intermediate Bash users
+
+*Targeted goal:* write maintainable Bash scripts
+====
+
+== Disclaimer
+
+* This is not intended to be a complete guide
+* I am self-taught in Bash
+
+=== Plan
+
+* What is bash?
+* Usage for developers
+* How should I write it?
+* Cheatsheet
+* Scripting advice
+* Pitfalls
+* Bash swiss army knife
+* Portability
+
+== What is bash?
+
+* Free, open source Unix Shell
+* Written by Brian Fox for GNU Project in 1989
+* Replacement for link:https://en.wikipedia.org/wiki/Bourne_shell[Bourne Shell]
+* link:https://en.wikipedia.org/wiki/POSIX[POSIX] compliant
+* Bash means Bourne-Again Shell
+* Default version on Mac is `3.2` (2006) for licensing issues
+* Default version on most linux distributions is `4.4` (2016)
+* Latest version is `5.2.15` (2022)
+
+[.notes]
+====
+Bourne Shell = sh. Bash copies most features from sh and adds a few of its own like history.
+
+POSIX is a set of standards aimed at making OSes compatible. It defines an API for software compatibility.
+
+Mac users *CAN* and *SHOULD* install a more recent Bash version. Apple just isn't allowed to do so on the computers they sell.
+====
+
+== Usage for developers
+
+* On CI for builds
+* On developer computers for tooling
+* On staging stacks via SSH for debugging
+
+[.notes]
+====
+Non-exhaustive list, of course
+====
+
+=== How should I write it?
+
+image::you-wouldnt.avif[Meme on the excellent piracy ad parody from the IT crowd. Labeled you wouldn't write JS without static analysis!,550,500]
+
+[.subtitle.small]#link:https://www.youtube.com/watch?v=ALZZx1xmAzg[Source of the image]#
+
+=== Lint away!
+
+link:https://github.com/koalaman/shellcheck[Shellcheck to the rescue!]
+
+image::shellcheck-example.avif[Shellcheck in action,552,201]
+
++++
+&nbsp;
++++
+
+image::shellcheck-example-ide.avif[Shellcheck in action (in IntelliJ),460,125]
+
+=== Shellcheck in editors
+
+Shellcheck is available in:
+
+* link:https://github.com/w0rp/ale[Vim]
+* link:https://github.com/flycheck/flycheck[Emacs]
+* link:https://github.com/SublimeLinter/SublimeLinter-shellcheck[Sublime]
+* link:https://github.com/timonwong/vscode-shellcheck[VSCode]
+* link:https://plugins.jetbrains.com/plugin/10195-shellcheck[Jetbrains IDEs]
+* Others via link:https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md#user-content-formats[GCC error compatibility]
+
+[.orange.fragment]#No excuses!#
+
+== Cheatsheet
+
+A cheatsheet you can come back to at any moment +
+A link:https://missing.csail.mit.edu[longer course from MIT emoji:arrow_upper_right[]]
+
+// TODO: add external link emoji on all external links
+
+=== Process input
+
+For programs that read standard input
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">sort <   hello.txt          # Sorts hello.txt</span>
+<span class="fragment">sort <<< "${var}"           # Sorts content of variable var</span>
+----
+
+=== Process output
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">printf 'hello' >  out.txt          # Writes standard output (hello) to out.txt</span>
+<span class="fragment">printf 'hello' >> out.txt          # Appends standard output (hello) to out.txt</span>
+<span class="fragment">command 2> err.txt                 # Writes standard error to err.txt</span>
+<span class="fragment">command &> all.txt                 # Writes standard output & error to all.txt</span>
+<span class="fragment">command > all.txt 2>&1             # Writes standard output & error to all.txt (POSIX way)</span>
+<span class="fragment">printf 'hello' > /dev/null         # Discards standard output</span>
+<span class="fragment">printf 'hello' 1>&2                # Write hello to standard output (syntactic sugar: >&2)</span>
+----
+
+=== Mixing input & output
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">printf 'hello' | grep 'toto'      # Pipes standard output (hello) to grep</span>
+----
+
+=== Variables
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">name='Toto'                  # /!\ No spaces around = in bash assignations /!\</span>
+<span class="fragment">echo "Hello ${name}\n"       # Variable is substituted in double quotes, prints 'Hello Toto'</span>
+<span class="fragment">echo 'Hello ${name}\n'       # Variable is not substituted in simple quotes, prints 'Hello $name'</span>
+----
+
+=== Functions
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment" data-fragment-index="0">functionName() {      # Classic syntax for declaration</span>
+    <span class="fragment" data-fragment-index="1">scriptName=$0     # $0 is the script name</span>
+    <span class="fragment" data-fragment-index="2">firstArgument=$1  # $n is the script's nth argument</span>
+    <span class="fragment" data-fragment-index="3">allArgs=$@        # $@ is all the arguments</span>
+    <span class="fragment" data-fragment-index="4">argsNumber=$#     # $# is the number of arguments</span>
+<span class="fragment" data-fragment-index="0">}</span>
+----
+
+=== Return codes
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">grep toto <<< 'toto'        # Return code is 0 === success</span>
+<span class="fragment">grep toto <<< 'tata'        # Return code is 1. Any code !== 0 is an error</span>
+<span class="fragment">lastReturnCode=$?           # $? contains the return code of the last command</span>
+<span class="fragment">command && { printf 'OK'; } # The block after && executed if command succeeds</span>
+<span class="fragment">command || { printf 'KO'; } # The block after || executed if command fails</span>
+----
+
+=== Share results
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment"># $() retrieves the standard output of a method</span>
+<span class="fragment">greeting="$(echo "Hello $name")"</span>
+<span class="fragment"># Less known, <() puts the standard output of a method in a temp file</span>
+<span class="fragment"># greetingFile is the path to a temporary file where the greeting was written</span>
+<span class="fragment">greetingFile=<(echo "Hello $name")</span>
+----
+
+=== Conditionals
+
+Conditionals in bash are expressions.
+
+Return code 0 = true, any other is false
+
+[source,bash,role='keep-markup fit-content']
+----
+<div class="fragment">
+if grep --silent 'toto' <<< 'tata'; then
+  # Executed if grep returns 0
+else
+  # Executed if grep returns anything else
+fi
+</div>
+<span class="fragment">[[ "${var}" = 'toto' ]]                      # Expressions in [[]] return 0 if true, non-zero otherwise</span>
+<span class="fragment">[[ "${var}" = 'toto' || "${var}" = 'tata' ]] # Composite conditionals</span>
+<div class="fragment">
+# Which means you usually write
+if [[ "${var}" == 'toto' ]]; then
+  # executed if var is toto
+fi
+</div>
+----
+
+[.notes]
+====
+Everything available inside double brackets is from the command `test`.
+
+Run `man test` for more info about what's available!
+====
+
+=== Globbing
+
+In a folder containing
+
+[source,role='fit-content']
+----
+.
+├── bar
+├── img.png
+├── img.jpg
+├── img.svg
+├── foo1
+├── foo2
+├── foo3
+└── foo99
+----
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">rm foo?          # Removes foo1, foo2 & foo3</span>
+<span class="fragment">rm foo??         # Removes foo99</span>
+<span class="fragment">rm foo*          # Removes foo1, foo2, foo3 & foo99</span>
+<span class="fragment">rm img.{svg,png} # Removes img.svg & img.png</span>
+<span class="fragment">rm img.*         # Removes img.svg img.jpg & img.png</span>
+<span class="fragment">rm foo{1..2}     # Removes foo1 & foo2</span>
+<span class="fragment">rm foo{*,99}     # Removes ?</span>
+<span class="fragment"># Only foo99!</span>
+----
+
+[.notes]
+====
+Note: using globbing is often better than `ls | grep`
+====
+
+=== Regex
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">[[ 'toto' =~ (to){3} ]]     # Returns 0, the string matches the regex</span>
+<span class="fragment">regex='(to){3}'</span>
+<span class="fragment">[[ 'toto' =~ $regex ]]      # Returns 1, the string does not match the regex</span>
+<span class="fragment">[[ '(to){3}' =~ "$regex" ]] # Returns 0, the regex is matched as a string /!\</span>
+----
+
+=== Parameter substitution - Bourne
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">
+# Before starting: $var = ${var}, $1 = ${1}
+# Substitutions look like: ${&lt;varName>&lt;substitutionCharacter>&lt;fallbackIfVariableIsUnset>}</span>
+<span class="fragment">
+# For substitutions below, adding : before the substitution character adds empty value to failure cases
+# Otherwise, only unset values fall in failure cases</span>
+<span class="fragment">toto=${var1-Nope}                # fallback value (Nope) if var1 is unset</span>
+<span class="fragment">toto=${1?Missing parameter toto} # error with message if $1 is unset</span>
+<span class="fragment">length=${#var}                   # returns the length of $var</span>
+----
+
+=== Parameter substitution - Bash
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">offset=${var:2}                  # returns the value of var, starting with an offset of 2</span>
+<span class="fragment">offset=${var:2:5}                # same but only returns 5 characters from the offset start</span>
+
+<span class="fragment">replaced=${var/[0-9]/?}          # replaces the first number in $var with ?</span>
+<span class="fragment">replaced=${var//[0-9]/?}         # replaces all numbers in $var with ?</span>
+
+<span class="fragment">TOKEN='Dr0w554P'</span>
+<span class="fragment">TOKEN_VAR='TOKEN'</span>
+<span class="fragment">secretToken=${!TOKEN_VAR}         # secretToken == TOKEN, useful for hard-wiring global vars</span>
+
+<span class="fragment"># /!\ The commands below only work with Bash 4+</span>
+<span class="fragment">upperCaseVar=${var^^}</span>
+<span class="fragment">lowerCaseVar=${var,,}</span>
+----
+
+link:https://www.tldp.org/LDP/abs/html/parameter-substitution.html[More on parameter substitution]
+
+[.gray]#You probably know enough though#
+
+=== Arrays
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">declare -a array         # Create indexed array: keys are integers</span>
+<span class="fragment">declare -A array         # Create declarative array: keys are whatever the hell you want (strings)</span>
+<span class="fragment">array=()                 # Create an indexed array without values</span>
+<span class="fragment">array=('titi tata' toto) # Create an indexed array with 2 values</span>
+
+<span class="fragment">arraySize=${#array[@]}                 # Gives the size: 2</span>
+<span class="fragment">array2ndElement=${array[1]}            # Gives the second element, toto</span>
+
+<span class="fragment">array+=(tutu tete)                     # Appends to an array</span>
+<span class="fragment">array[2]=(tee-tee)                     # Updates array item</span>
+<span class="fragment">for item in "${array[@]}"; do ... done # Loops on an array</span>
+<span class="fragment">sliced=("${array[@]:1:2}")             # Slices array, offset 1, 2 elements</span>
+
+<span class="fragment">declare -p array     # Log the array in the form: declare -a array=([0]="titi tata" [1]="toto")</span>
+<span class="fragment">printf "${array[@]}" # A simpler version but less clear: titi tata toto</span>
+----
+
+== Scripting advice
+
+=== Scripts have curves
+
+image::real-scripts-have-curves.avif[A meme of a rhino with text saying that scripts have curves,577,433]
+
+=== Scripts shape - goals
+
+Maintainability means:
+
+* Readability
+* Usability
+* Debug-ability
+
+=== Script shape - example
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment fade-in-then-semi-out" data-fragment-index="1">#!/usr/bin/env bash</span>
+
+<span class="fragment fade-in-then-semi-out" data-fragment-index="2">set -euxo pipefail # Fail ASAP, log commands before running them</span>
+<span class="fragment fade-in-then-semi-out" data-fragment-index="3">test -f '/path/to/lib' && { source "$_"; } # Load libs from FS</span>
+
+<span class="fragment fade-in-then-semi-out" data-fragment-index="4">main() ( # One big function executed in a sub-shell</span>
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="5">if isHelp; then displayHelpAndReturn; fi</span>
+
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="6">arg1="${1?Missing path to lib}" # Check inputs first</span>
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="6">arg2="${2?Missing bla bla}"</span>
+
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="7">_importedCommand "$arg1" # Use functions to make script readable</span>
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="7">command1 "$arg1"</span>
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="7">command2 "$arg2"</span>
+<span class="fragment fade-in-then-semi-out" data-fragment-index="4">)</span>
+
+<span class="fragment fade-in-then-semi-out" data-fragment-index="8">command1() ( # Declared below main declaration but not usage!</span>
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="8">arg1="$1"</span>
+  <span class="fragment fade-in-then-semi-out" data-fragment-index="8">...</span>
+<span class="fragment fade-in-then-semi-out" data-fragment-index="8">)</span>
+
+<span class="fragment fade-in-then-semi-out" data-fragment-index="8">command2() ( ... )</span>
+
+<span class="fragment fade-in-then-semi-out" data-fragment-index="9">main "$@" # Passing all script params to main</span>
+----
+
+// TODO: add traps?
+
+[.notes]
+====
+
+* *Shebang:* So the system knows how to execute it. Bash for bash, sh for Bourne!
+
++
+You can execute it with `./script.sh` but it requires a `chmod +x ./script.sh` first
++
+Better use `bash ./script.sh`. The shebang helps shellcheck use the right shell dialect though.
+
+* *set -euxo pipefail:* Eq: `set -x; set -e; set -u; set -o pipefail` Only when necessary (ex: CI)
+** *set -e*: Exit as soon as an error occurs
+** *set -x*: Log commands before running them
+** *set -u*: Exit on unset variables
+** *set -o pipefail*: Even catch errors inside pipes
+
+* *Import files:* For re-usability. Test the existence before
+* *main part:* Should be almost literal, this is where you understand what it does at a glance
+* *help:* For interactive scripts. For CI, comments are enough
+* *args:* Get and check your args before doing anything
+* *body:* Literal, as said earlier
+* *Script utils:* To hide unimportant implementation details and EXPLAIN
+* *main call:* Call the main method, passing all arguments passed to the script
+====
+
+=== Conventions
+
+[.subtitles]#Disclaimer: these are my own, they've helped me a lot though#
+
+[cols="1,1",role='small']
+|===
+| Rule | Reason
+// ---------------------------------------------------------------------
+| Use double quotes only when there is a substitution
+| Makes it easier to spot constants from templated strings
+// ---------------------------------------------------------------------
+| Quote everything unless you have a good reason not to
+| Minimizes errors due to word splitting
+// ---------------------------------------------------------------------
+| Prefix external methods/constants with _
+| Makes it easier to spot them and find where they are implemented
+// ---------------------------------------------------------------------
+| Casing:
+
+* *UPPER_SNAKE_CASE* for constants and global variables +
+* *lowerCamelCase* otherwise
+| Makes them easier to differentiate
+// ---------------------------------------------------------------------
+| Use full flags in CLI tools
+| More explicit, ex: +
+`jq -r` +
+vs. +
+`jq --raw-output`
+// ---------------------------------------------------------------------
+|===
+
+== Pitfalls
+
+=== Deprecated syntaxes
+
+[source,bash,role='keep-markup fit-content',data-fragment-index='1']
+----
+<span class="fragment" data-fragment-index="1">files=`ls`    # Back-tick syntax is deprecated in bash</span>
+<span class="fragment" data-fragment-index="2">files="$(ls)" # The syntax to use</span>
+----
+
+link:https://github.com/koalaman/shellcheck/wiki/SC2006[Explanation of the back-tick deprecation]
+
+[source,bash,role='keep-markup fit-content',data-fragment-index='1']
+----
+<span class="fragment" data-fragment-index="3">[ -n "${fileName}" ]   # Uses /usr/bin/[</span>
+<span class="fragment" data-fragment-index="5">test -n "${fileName}"  # Uses /usr/bin/test</span>
+<span class="fragment" data-fragment-index="4">[[ -n "${fileName}" ]] # Prefer built-in syntax, can't be messed with</span>
+----
+
+link:https://unix.stackexchange.com/questions/32210/why-does-parameter-expansion-with-spaces-without-quotes-work-inside-double-brack/32227#32227[Explanation of why you should use double brackets for conditionals]
+
+=== Variable names and side effects
+
+* Some variable names are link:https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08[reserved]
+* Some are used by other tools
+* Use precise/namespaced names for upper-case variables
+
+=== Imports
+
+emoji:warning[] Imports are resolved from `cwd` in bash! emoji:warning[]
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">
+# Bad way
+source ./utils.sh # Resolves to ~/utils.sh if cwd=~ and /tmp/utils.sh if cwd=/tmp</span>
+<span class="fragment">
+# Better way
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"<span data-description="fix botched highlighting" style="display:none">"</span> # Gets script dir, see <a href="#one-liners">one-liners</a>
+source "${dir}/utils.sh"</span>
+----
+
+=== Subshells - what is it?
+
+A subshell is a separate instance of the command processor (here, Bash)
+
+=== Subshells - how do I create one?
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">( cd /tmp; ls )  # Anything inside parenthesis happens in a subshell</span>
+<span class="fragment">$( cd /tmp; ls ) # Same thing, just capturing stdout too</span>
+<span class="fragment">
+# Piping creates a subshell
+cat file.txt | while read -r line; do
+  # In a subshell here
+done</span>
+<span class="fragment">
+# This does not create a subshell
+while read -r line; do
+  # Not in a subshell here
+done < file.txt
+</span>
+----
+
+[.notes]
+====
+For the attentive reader, the flag -r in read disables escaping of line breaks with \
+
+This prevents read from reading the following code as a single line
+
+[source,bash]
+----
+cat toto.txt \
+  | sort
+----
+====
+
+=== Subshells - what are the impacts?
+
+In a subshell, you can't modify the outside state, meaning
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">( cd /tmp; ls ) # cwd != /tmp after this line, only the subshell got cd-ed</span>
+
+<span class="fragment">var=toto; (var=tata); echo "${var}" # Outputs toto</span>
+<span class="fragment">
+while read -r line; do
+  var=tutu
+done < file.txt
+echo "${var}" # Outputs tutu
+</span>
+----
+
+=== Set -e
+
+This is a tricky one
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">
+set -e # The script fails on any uncaught errors from now on
+
+# What do you think this does?
+grep --silent toto <<< 'tata' && { printf 'OK!\n'; }
+</span>
+<span class="fragment"># It EXITS! Error case is not caught</span>
+
+<span class="fragment">grep --silent 'a' <<< 'b' || { printf 'OK!\n'; } # The error is caught here</span>
+<span class="fragment">if grep --silent 'a' <<< 'b'; then # Prefer using if, it catches all errors
+  echo 'OK'
+fi</span>
+----
+
+== Bash swiss army knife
+
+[.subtitle]#A nice collections of things to know/install#
+
+[#one-liners]
+=== Commands and one-liners
+
+[.subtitle]#Save them somewhere!#
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">
+# Create a temporary file and write its path on stdout
+mktemp -f toto-XXX.txt # The XXX are replaced by random characters</span>
+<span class="fragment">
+# Retrieve the path to the file being executed
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# What it does:
+# * ${BASH_SOURCE[@]} contains the path to the current script
+# * dirname           extracts the containing folder path
+# * cd                cds to it
+# * pwd               prints the absolute path to the current directory
+#                     cd/pwd is the most portable link resolver
+</span>
+----
+
+[.notes]
+====
+It is possible to resolve links with other methods (like `readlink`) but most are not portable or don't support symlinks.
+====
+
+=== Tips & tricks
+
+[source,bash,role='keep-markup fit-content']
+----
+<span class="fragment">
+# Escape any character with, even line breaks, improves readability
+command \
+  | uniq \
+  | sort \
+  > output.txt
+cat ~/Horrible\ file.txt # Also works with names containing spaces</span>
+<span class="fragment">
+# Group outputs with blocks
+command1 >  output.txt # Big chance of using a > by mistake later
+command2 >> output.txt
+command3 >  output.txt # And ruining the beginning of the file, oops!
+
+{
+  command1; command2; command3
+} > output.txt # No risk of error!</span>
+<span class="fragment">
+# Pushd with auto-popd!
+set -e
+(
+  cd "$folder"
+  commandThatMayFailAndWouldNotResetCwdIfInMainShell
+)</span>
+<span class="fragment">
+env SHELLOPTS=xtrace bash ./script.sh # Run any script with set -x
+</span>
+----
+
+[.subtitle]#I'll enrich this section as I go along#
+
+=== Useful packages
+
+* link:https://curl.haxx.se[curl] THE most used CLI HTTP client
+* link:https://hisham.hm/htop/[htop] process inspector
+* link:https://github.com/sharkdp/fd[fd] to replace find
+* link:https://github.com/BurntSushi/ripgrep[rg] (RipGrep) to replace grep
+* link:https://linux.die.net/man/1/tree[tree] replaces ls for nested folders
+* link:https://github.com/nvbn/thefuck[fuck] fix typos in previous command
+* link:https://github.com/sharkdp/bat[bat] cat on steroids (syntax coloration, git integration...)
+* link:https://stedolan.github.io/jq/manual[jq] JSON parser (use 1.5+ to keep property order)
+* link:https://github.com/mikefarah/yq[yq] YAML equivalent of jq
+* link:http://xmlstar.sourceforge.net[xmlstarlet] XML parser
+* link:https://github.com/BurntSushi/xsv[xsv] CSV parser
+
+== Portability
+
+[.subtitle]#Making sure it executes properly on all systems by avoiding non-portable commands#
+
+[cols='1,1,1',role='small']
+|===
+| Command | Reason | Recommandation
+// ---------------------------------------------------
+| link:https://en.wikipedia.org/wiki/Sed[sed]
+| GNU version (Linux) and FreeBSD (Mac) differ on some flags. Syntax hard to read.
+| For structured formats (JSON etc.) use a real parser. Otherwise, use `awk`
+// ---------------------------------------------------
+| link:https://en.wikipedia.org/wiki/Echo_(command)[echo]
+| Some flags (`-e`) don't behave the same on linux and mac
+| Use link:https://en.wikipedia.org/wiki/Printf_format_string[printf]
+// ---------------------------------------------------
+| link:http://linux.die.net/man/1/readlink[readlink]
+| Mac does not have the GNU version of readlink
+a|
+[source,bash,role='fit-content']
+----
+resolvedLink="$(cd "$path" && pwd -P)"
+----
+
+// ---------------------------------------------------
+| Direct shebangs
+| Programs are not always installed at the same place
+a|
+[source,bash,role='fit-content']
+----
+#!/usr/bin/env python
+# Instead of /usr/bin/python for example
+----
+// ---------------------------------------------------
+| Shell flags not in shebangs
+| Some systems will ignore them or crash
+a|
+[source,bash,role='fit-content']
+----
+#!/usr/bin/env bash
+set -e
+# Instead of #!/usr/bin/env bash -e
+----
+
+// ---------------------------------------------------
+|===
+
+== Nice sources
+
+* link:https://missing.csail.mit.edu[The missing semester of your CS education]
+* link:https://wiki.bash-hackers.org/[The bash hacker wiki]
+
+[.notes]
+====
+Note: the first one is digestible easily, the second one less so
+====
+
+=== Q&A
+
+[.subtitle]#Ask me anything#
